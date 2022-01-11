@@ -1,5 +1,6 @@
 import scraping_b3
 import PySimpleGUI as sg
+from functools import partial
 
 def iniciar_tela():
 
@@ -8,11 +9,7 @@ def iniciar_tela():
 
     # layout da interface
     layout = [  [sg.Text("Digite o fundo imobiliário desejado:")],
-                [sg.Input(key='nome')],
-                [sg.Text("Digite a data inicial: ")],
-                [sg.Input(key='data_inicial')],
-                [sg.Text("Digite a data final: ")],
-                [sg.Input(key='data_final')],           
+                [sg.Input(key='nome')],          
                 [sg.Button('Pesquisar'), sg.Button('Sair')]]
 
     window = sg.Window('Web Scraping', layout)
@@ -22,13 +19,13 @@ def iniciar_tela():
         event, values = window.read()    
 
         if event == sg.WIN_CLOSED or event == 'Sair':
-            scraping_b3.adicionando_data_frame()
             break
         
         # efetua pesquisa com as dados lidos
-        if event == 'Pesquisar' and values['nome'] != '' and values['data_inicial'] != '' and values['data_final'] != '':
+        if event == 'Pesquisar' and values['nome'] != '' :
             try:
-                scraping_b3.get_dados(values['nome'], values['data_inicial'], values['data_final']) 
+                scraping = partial(scraping_b3.get_dados, '29/11/2021', '30/11/2021')
+                scraping(values['nome'])
             except:
                 print("Algo deu errado! Função get dados não pode ser chamada")
         else:
