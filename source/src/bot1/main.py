@@ -13,5 +13,5 @@ def start():
     #map(scraping_b3.get_dados(nome), fii)
 
 #start()
-tela.iniciar_tela()
-#scraping('BCRI')
+#tela.iniciar_tela()
+scraping('BCRI')

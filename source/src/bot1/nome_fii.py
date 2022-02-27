@@ -5,7 +5,7 @@ def list_fii():
 
     code_list_of_REIT = []
 
-    with open("projeto_cientifico/fiis/table_ifix.html", "r") as file:
+    with open("projeto_cientifico/source/src/fiis/table_ifix.html", "r") as file:
         table_ifix = file.read()
         file.close()
 
