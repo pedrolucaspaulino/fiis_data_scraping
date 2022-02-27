@@ -154,6 +154,7 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial):
         valor_provento = float(string_valor_provento[0] + '.' + string_valor_provento[1])
 
         data_base = (soup_dados[3])
+        data_pagamento = (soup_dados[4])
         meses = ['jan', 'fev', 'mar', 'abr','maio','jun','jul','ago','set','out','nov','dez']
         data_referencia = data_base.split('/')
         periodo_referencia = f"{data_referencia[2]}.{meses[int(data_referencia[1]) - 1]}"
@@ -163,10 +164,11 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial):
             'nome': [nome], 
             'data_base': [data_base], 
             'valor_provento': [valor_provento], 
+            'data_pagamento': [data_pagamento],
             'periodo_referencia': [periodo_referencia]
         }
 
-        # salvando as informações obtidas no banco de dados
+        # salvando as informações obtidas no banco de dados    
         banco_dados.insert_into_talela(dic, 'info_fii')
 
     except:
