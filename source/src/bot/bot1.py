@@ -4,10 +4,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import banco_dados
 from bs4 import BeautifulSoup
-from time import sleep
-import pandas as pd
+import banco_dados
+import bot2
 
 option = Options()
 option.headless = True
@@ -28,11 +27,11 @@ def get_dados(data_inicial, data_final, nome):
 
         else:
             soup_link =  solicitar_noticia_qualificada(incremento, browser)
-            id_tabela = encontrar_id_tabela(soup_link)
-            soup_tabela = capturar_tabela(id_tabela, browser)
+            url_tabela = encontrar_id__url_tabela(soup_link)
+            soup_tabela = capturar_tabela(browser, '/html/body/table[2]', url_tabela)
 
         finally:
-            salvar_dados(soup_tabela, nome, data_final, data_inicial)
+            salvar_dados(soup_tabela, nome, data_final, data_inicial, browser)
             print(f"{nome}: Processo finalisado.")
 
 
@@ -60,8 +59,8 @@ def efetuar_pesquisa(nome, data_inicial, data_final, browser):
         
         # atribuindo o html dos cards de notícias em 'html_tabela_noticias'
         tabela_noticias = browser.find_element(By.ID, "tabelaNoticias")
-        #tabela_noticias = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.ID, "tabelaNoticias")))
-        sleep(5)
+        tabela_noticias = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.XPATH, '//*[@id="tabelaNoticias_wrapper"]')))
+
 
         html_tabela_noticias = tabela_noticias.get_attribute('outerHTML') 
         soup_cards_noticia = BeautifulSoup(html_tabela_noticias, 'html.parser') 
@@ -104,7 +103,7 @@ def solicitar_noticia_qualificada(incremento, browser):
         print("Erro! Ao requerir notícia qualificada.") 
 
 
-def encontrar_id_tabela(soup_link):
+def encontrar_id__url_tabela(soup_link):
     # encontrando o id tabela
     try:
         # optendo o 'id' de identificação da tabela contendo os dados do fii
@@ -112,31 +111,33 @@ def encontrar_id_tabela(soup_link):
             lista_link = str(ancora['href']).split('=')
             id_tabela = lista_link[1]
 
-        return id_tabela
+        url_tabela= 'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id='+id_tabela+'&#toolbar=0'
+
+        return url_tabela
 
     except:
         print("Erro! id tabela não encontrado")
 
 
-def capturar_tabela(id_tabela, browser):
-    # soliciando pela tabela com o id encontrado 
+def capturar_tabela(browser, xpath, url):
+    # captura a tabela desejada e retorna um 'sopa' html
     try:
-        # formando a url da tabela de exibição com base no 'id' encontrado anteriormente 
-        url_tabela_dados = 'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id='+id_tabela+'&#toolbar=0'
-        browser.get(url_tabela_dados)               
 
-        # obtendo o html da tabela de exibição com os dados do fii pesquisado
-        tabela = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, "/html/body/table[2]")))
+        # utilizando a url faz o requerimento da tabela
+        browser.get(url)    
+
+        # a partir do 'xpath' encotra-se a tabela e logo em seguida é armazenada em uma variável
+        tabela = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
+        # extrai o html da tabela que logo em seguida é retornado pela função
         html_tabela = tabela.get_attribute('outerHTML')
         soup_tabela = BeautifulSoup(html_tabela, 'html.parser')
 
         return soup_tabela
-    
-    except: 
-        print("Erro! Ao solicitar tabela")
 
-
-def salvar_dados(soup_tabela, nome, data_final, data_inicial):
+    except:
+        print("Erro! Tabela não pode ser solicitar.")
+        
+def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
     # salvando tabela no banco de dados 
     try:        
 
@@ -154,6 +155,10 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial):
         valor_provento = float(string_valor_provento[0] + '.' + string_valor_provento[1])
 
         data_base = (soup_dados[3])
+
+        dia = data_base.split('/')
+        cotacao_data_base = bot2.get_cotacao(browser, nome, dia[0])
+
         data_pagamento = (soup_dados[4])
         meses = ['jan', 'fev', 'mar', 'abr','maio','jun','jul','ago','set','out','nov','dez']
         data_referencia = data_base.split('/')
@@ -162,13 +167,14 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial):
         # criando dicionário para utilizar como parâmetro na função 'insert_into_talela'
         dic = {
             'nome': [nome], 
-            'data_base': [data_base], 
+            'data_base': [data_base],
+            'cotacao_data_base': [cotacao_data_base],
             'valor_provento': [valor_provento], 
             'data_pagamento': [data_pagamento],
             'periodo_referencia': [periodo_referencia]
         }
 
-        # salvando as informações obtidas no banco de dados    
+        # salvando as informações obtidas no banco de dados
         banco_dados.insert_into_talela(dic, 'info_fii')
 
     except:
