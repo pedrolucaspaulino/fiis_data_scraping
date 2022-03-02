@@ -8,9 +8,6 @@ from bs4 import BeautifulSoup
 import bot1
 import format_data
 
-option = Options()
-option.headless = True
-
 def get_cotacao(browser, nome, dia):
 
     try:
@@ -25,16 +22,13 @@ def get_cotacao(browser, nome, dia):
     except:
         print("Erro! Não foi possível realizar a captura da cotação referente a data base.")
 
-
 def url_pesquisa(nome):
     # formatando a url do fii desejado
     try:
         # função que formata a data para 'mes'/'ano' do mês anterior ao da data de execução do bot
         data_formatada = format_data.fun_data()    
         # url de pesquisa
-        url = f'https://bvmf.bmfbovespa.com.br/SIG/FormConsultaMercVista.asp?strTipoResumo=RES_MERC_VISTA&strSocEmissora={nome}&strDtReferencia={data_formatada}&strIdioma=P&intCodNivel=2&intCodCtrl=160'
-        
-        
+        url = f'https://bvmf.bmfbovespa.com.br/SIG/FormConsultaMercVista.asp?strTipoResumo=RES_MERC_VISTA&strSocEmissora={nome}&strDtReferencia={data_formatada}&strIdioma=P&intCodNivel=2&intCodCtrl=160'                
         return url
 
     except:

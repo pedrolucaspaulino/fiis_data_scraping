@@ -5,7 +5,7 @@ conexao = sqlite3.connect('projeto_cientifico/data/dados.db')
 cursor = conexao.cursor()
 
 def criando_tabela_infofii(nome_tabela):
-    criando_sql = f"CREATE TABLE IF NOT EXISTS {nome_tabela} (nome TEXT, data_base TEXT, cotacao_data_base REAL, valor_provento REAL, data_pagamento TEXT, periodo_referencia TEXT)"
+    criando_sql = f"CREATE TABLE IF NOT EXISTS {nome_tabela} (nome TEXT, data_base TEXT, cotacao_data_base REAL, valor_provento REAL, data_pagamento TEXT, periodo_referencia TEXT PRIMARY KEY)"
     cursor.execute(criando_sql) 
 
 # novos parametros para ser modificado: dodos, tabela

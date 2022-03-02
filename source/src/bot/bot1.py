@@ -148,21 +148,29 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
         for span in soup_tabela.findAll('span', class_='dado-valores'):
             soup_dados.append(span.text)
 
-        # editando editando formato dos elementos encontrados para salvar no banco
+        # editando formato dos elementos encontrados para salvar no banco
+        # fomatando nome do fundo para incluir '11' no fim de cada nome
         nome = (str(nome + "11"))
 
+        # capturando da sopa html a string do 'valor do provento' e formatando-a para float
         string_valor_provento = soup_dados[5].split(',')
         valor_provento = float(string_valor_provento[0] + '.' + string_valor_provento[1])
 
+        # capturando 'data base' da sopa html
         data_base = (soup_dados[3])
 
-        dia = data_base.split('/')
+        # informando o dia em do qual a 'data_base' é situada para a função de cotação
+        dia = data_base.split('/')       
+        # chamando função do bot2 para capturar a cotação referente a data base  
         cotacao_data_base = bot2.get_cotacao(browser, nome, dia[0])
 
+        # capturando 'data pagamento' da sopa html
         data_pagamento = (soup_dados[4])
+        #formatando a 'data referencia' utilizando a 'data base' como referencia
         meses = ['jan', 'fev', 'mar', 'abr','maio','jun','jul','ago','set','out','nov','dez']
         data_referencia = data_base.split('/')
-        periodo_referencia = f"{data_referencia[2]}.{meses[int(data_referencia[1]) - 1]}"
+        # periodo_referencia é a chave primaria do banco de dados
+        periodo_referencia = f"{nome}-{data_referencia[2]}.{meses[int(data_referencia[1]) - 1]}"
 
         # criando dicionário para utilizar como parâmetro na função 'insert_into_talela'
         dic = {
