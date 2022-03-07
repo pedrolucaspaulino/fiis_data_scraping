@@ -5,6 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from time import sleep
 import banco_dados
 import bot2
 
@@ -34,7 +35,6 @@ def get_dados(data_inicial, data_final, nome):
             salvar_dados(soup_tabela, nome, data_final, data_inicial, browser)
             print(f"{nome}: Processo finalisado.")
 
-
 def efetuar_pesquisa(nome, data_inicial, data_final, browser):
     # efetuando a pesquisa pelo fii desejado
     try:
@@ -58,9 +58,8 @@ def efetuar_pesquisa(nome, data_inicial, data_final, browser):
         pesquisa.click()
         
         # atribuindo o html dos cards de notícias em 'html_tabela_noticias'
-        tabela_noticias = browser.find_element(By.ID, "tabelaNoticias")
+        sleep(0.5)
         tabela_noticias = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.XPATH, '//*[@id="tabelaNoticias_wrapper"]')))
-
 
         html_tabela_noticias = tabela_noticias.get_attribute('outerHTML') 
         soup_cards_noticia = BeautifulSoup(html_tabela_noticias, 'html.parser') 
@@ -69,7 +68,6 @@ def efetuar_pesquisa(nome, data_inicial, data_final, browser):
 
     except:
         print("Erro! Pesquisa não pode ser solicitar.")
-
 
 def encontrar_card_qualificado(soup_cards_noticia, nome):
     # econtrando o card de notícia contendo o elemento 'Aviso aos Cotistas'    
@@ -83,7 +81,6 @@ def encontrar_card_qualificado(soup_cards_noticia, nome):
 
     except:
         print("Erro! Card qualificado não encotrado")
-
 
 def solicitar_noticia_qualificada(incremento, browser):
     # solicitando pele noticia na qual o elemento do card seja qualificado
@@ -102,7 +99,6 @@ def solicitar_noticia_qualificada(incremento, browser):
     except:
         print("Erro! Ao requerir notícia qualificada.") 
 
-
 def encontrar_id__url_tabela(soup_link):
     # encontrando o id tabela
     try:
@@ -117,7 +113,6 @@ def encontrar_id__url_tabela(soup_link):
 
     except:
         print("Erro! id tabela não encontrado")
-
 
 def capturar_tabela(browser, xpath, url):
     # captura a tabela desejada e retorna um 'sopa' html
@@ -181,7 +176,7 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
             'data_pagamento': [data_pagamento],
             'periodo_referencia': [periodo_referencia]
         }
-
+        print(dic)
         # salvando as informações obtidas no banco de dados
         banco_dados.insert_into_talela(dic, 'info_fii')
 
