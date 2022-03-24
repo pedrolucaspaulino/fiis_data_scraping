@@ -10,7 +10,7 @@ import banco_dados
 import bot2
 
 option = Options()
-option.headless = True
+option.headless = False
 
 # função principal
 def get_dados(data_inicial, data_final, nome):
@@ -58,7 +58,7 @@ def efetuar_pesquisa(nome, data_inicial, data_final, browser):
         pesquisa.click()
         
         # atribuindo o html dos cards de notícias em 'html_tabela_noticias'
-        sleep(0.5)
+        sleep(5)
         tabela_noticias = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.XPATH, '//*[@id="tabelaNoticias_wrapper"]')))
 
         html_tabela_noticias = tabela_noticias.get_attribute('outerHTML') 
@@ -131,6 +131,13 @@ def capturar_tabela(browser, xpath, url):
 
     except:
         print("Erro! Tabela não pode ser solicitar.")
+
+def calcular_dividend_yield(cotacao, provento):
+    try:
+        dividend_yield = (provento/cotacao) * 100
+        return dividend_yield
+    except:
+        print("Erro! Não foi possivel calcular o dividend yield")
         
 def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
     # salvando tabela no banco de dados 
@@ -161,11 +168,16 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
 
         # capturando 'data pagamento' da sopa html
         data_pagamento = (soup_dados[4])
+
         #formatando a 'data referencia' utilizando a 'data base' como referencia
         meses = ['jan', 'fev', 'mar', 'abr','maio','jun','jul','ago','set','out','nov','dez']
         data_referencia = data_base.split('/')
+
         # periodo_referencia é a chave primaria do banco de dados
         periodo_referencia = f"{nome}-{data_referencia[2]}.{meses[int(data_referencia[1]) - 1]}"
+
+        # chamando a função calcular_dividend_yield 
+        dividend_yield = calcular_dividend_yield(cotacao_data_base, valor_provento)
 
         # criando dicionário para utilizar como parâmetro na função 'insert_into_talela'
         dic = {
@@ -174,7 +186,8 @@ def salvar_dados(soup_tabela, nome, data_final, data_inicial, browser):
             'cotacao_data_base': [cotacao_data_base],
             'valor_provento': [valor_provento], 
             'data_pagamento': [data_pagamento],
-            'periodo_referencia': [periodo_referencia]
+            'periodo_referencia': [periodo_referencia],
+            'dividend_yield': [dividend_yield]
         }
         print(dic)
         # salvando as informações obtidas no banco de dados
