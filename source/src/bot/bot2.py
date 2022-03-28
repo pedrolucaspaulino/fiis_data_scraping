@@ -1,24 +1,17 @@
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-import bot1
+from bot1 import capturar_tabela
 import format_data
 
-def get_cotacao(browser, nome, dia):
-
+def get_cotacao(nome, dia, browser):
+    
     try:
         # formata a url para pesquisa
         url_nome = url_pesquisa(nome)
         # efetua a pesquisa e caputara a tabela retornando seu html (função aproveitado do bot1)
-        soup_tabela = bot1.capturar_tabela(browser, '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]/td/table', url_nome)
+        soup_tabela = capturar_tabela(browser, '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]/td/table', url_nome)
         # encotra e retorna a cotação de fechamento seguindo como referência a data base
         cotacao = capturar_cotacao(soup_tabela, dia)
         return cotacao
-    
+        
     except:
         print("Erro! Não foi possível realizar a captura da cotação referente a data base.")
 

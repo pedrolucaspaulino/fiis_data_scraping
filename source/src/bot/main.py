@@ -1,18 +1,17 @@
-from functools import partial
-import nome_fii  
-import bot1
-import format_data
+from nome_fii import list_fii
+from scraping import execucao_tudo
 
-def main():  
+def relatorio(path_file, conteudo):
 
-    datas = format_data.data_inicial_final()
-    data_inicial = datas[0]
-    data_final = datas[1]
-    scraping = partial(bot1.get_dados, data_inicial, data_final) 
+    with open(path_file, 'w') as file:
+        for nome in conteudo:
+            file.write(str(nome + "\n"))                  
 
-    fii = nome_fii.list_fii()
-    for nome in range(len(fii)):
-        scraping(fii[nome])
+def main():
+
+    fiis = list_fii()
+    erro = list(filter(execucao_tudo, fiis))
+    relatorio('projeto_cientifico/source/relatorio.txt', erro)   
 
 if __name__ == '__main__':
     main()
