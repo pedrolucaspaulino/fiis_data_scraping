@@ -42,7 +42,7 @@ def data_inicial_final():
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '29' + '/' + mes + '/' + ano
 
-    elif mes == '01' or mes == '03' or mes == '05' or mes == '06' or mes == '08' or mes == '10' or mes == '12':       
+    elif mes == '01' or mes == '03' or mes == '05' or mes == '07' or mes == '08' or mes == '10' or mes == '12':       
         data_inicial = '02' + '/' +mes + '/' + ano
         data_final = '31' + '/' + mes + '/' + ano
 

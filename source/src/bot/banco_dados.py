@@ -62,7 +62,9 @@ def create_fiis_valores(conn, dados):
     return cur.lastrowid
 
 def salvar_dados(dados_tab1, dados_tab2):
-    database = 'projeto_cientifico/data/dados.db'
+    #database = 'projeto_cientifico/data/dados.db'
+    database = 'data/dados.db'
+
 
     sql_create_fiis_valores = """ CREATE TABLE IF NOT EXISTS fiis_valores (
                                         periodo_referencia TEXT PRIMARY KEY, 
@@ -88,8 +90,9 @@ def salvar_dados(dados_tab1, dados_tab2):
         # create projects table
         create_table(conn, sql_create_fiis_valores)
         create_table(conn, sql_create_fiis_datas)
-        create_fiis_datas(conn, dados_tab1)
-        create_fiis_valores(conn, dados_tab2)        
+        
+        if create_fiis_valores(conn, dados_tab2):        
+            create_fiis_datas(conn, dados_tab1)
 
     else:
         print("Error! cannot create the database connection.")

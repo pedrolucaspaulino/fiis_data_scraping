@@ -6,7 +6,7 @@ from format_data import data_inicial_final
 from banco_dados import salvar_dados
 
 option = Options()
-option.headless = False
+option.headless = True
 
 def execucao_tudo(nome):
 
@@ -32,7 +32,7 @@ def execucao_tudo(nome):
         valor_provento = dados_bot1[4]
         dividend_yield = calcular_dividend_yield(cotacao_data_base, valor_provento)
 
-        tab2 = (dados_bot1[3], valor_provento, cotacao_data_base, dividend_yield)
+        tab2 = (dados_bot1[3], cotacao_data_base, valor_provento, dividend_yield)
         tab1 = (dados_bot1[0:4])
 
         salvar_dados(tab1, tab2)
@@ -42,6 +42,21 @@ def execucao_tudo(nome):
     except:
         print("Erro! Falha ao concluir o scraping.")
         return True
+
+    finally:
+        browser.quit()
+
+
+def get_tabela_nome_fiis():
+
+    try:
+        browser = webdriver.Firefox(options=option)
+        scraping_html(browser)
+        return True
+
+    except:
+        print("Erro! Falha ao capturar tabela nome Fiis.")
+        return False
 
     finally:
         browser.quit()

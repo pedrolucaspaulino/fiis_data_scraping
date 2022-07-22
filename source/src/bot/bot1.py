@@ -3,7 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from time import sleep
+import json
 
 # função principal
 def get_dados(data_inicial, data_final, nome, browser):
@@ -12,10 +12,10 @@ def get_dados(data_inicial, data_final, nome, browser):
 
     try:
 
-        soup_cards_noticia = efetuar_pesquisa(nome, data_inicial, data_final, browser)
-        incremento =  encontrar_card_qualificado(soup_cards_noticia, nome)
+        list_dicionarios_noticia = efetuar_pesquisa(nome, data_inicial, data_final, browser)
+        credenciais_noticia =  encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia)
 
-        soup_link =  solicitar_noticia_qualificada(incremento, browser)
+        soup_link =  solicitar_noticia_qualificada(credenciais_noticia, browser)
         url_tabela = encontrar_id__url_tabela(soup_link)
         soup_tabela = capturar_tabela(browser, '/html/body/table[2]', url_tabela)
 
@@ -40,56 +40,55 @@ def get_dados(data_inicial, data_final, nome, browser):
 def efetuar_pesquisa(nome, data_inicial, data_final, browser):
     # efetuando a pesquisa pelo fii desejado
     try:
-        url = 'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/Index?agencia=18'
-        browser.get(url)
 
-        # requerindo pelo fii desejado
-        elem_name = browser.find_element(By.ID, 'txtPalavraChave') 
-        elem_name.send_keys(nome)
+        # formantado data para utlizá-la na url de pesquisa
+        data_final_format = data_final.split('/')[2] + '-' + data_final.split('/')[1] + '-' + data_final.split('/')[0] 
+        data_inicial_format = data_inicial.split('/')[2] + '-' + data_inicial.split('/')[1] + '-' + data_inicial.split('/')[0]  
 
-        # pesquisando a data inicial de pesquisa 
-        elem_data_inicial = browser.find_element(By.ID, 'txtPeriodoDe')
-        elem_data_inicial.send_keys(data_inicial)
+        # realizando request 
+        url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/ListarTitulosNoticias?agencia=18&palavra={nome}&dataInicial={data_inicial_format}&dataFinal={data_final_format}'        
+        browser.get(url)     
 
-        # pesquisando a data final de pesquisa 
-        elem_data_final = browser.find_element(By.ID, 'txtPeriodoAte')  
-        elem_data_final.send_keys(data_final)
-
-        # efetuando a pesquisa de notícias
-        pesquisa = WebDriverWait(browser, 10).until(EC.element_to_be_clickable((By.XPATH, "//div[@class='large-3 columns']/button[@id='btnBuscar']")))
-        pesquisa.click()
+        # processando e capturando dados
+        # processando json retornado pelo request realizado anteriormente
+        arquivo_json = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH,"/html/body")))
+        html_arquivo_json = arquivo_json.get_attribute('outerHTML')
+        soup_json = BeautifulSoup(html_arquivo_json, 'html.parser')
+        list_dicionarios = json.loads(soup_json.text)
         
-        # atribuindo o html dos cards de notícias em 'html_tabela_noticias'
-        sleep(5)
-        tabela_noticias = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.XPATH, '//*[@id="divNoticias"]')))
-
-        html_tabela_noticias = tabela_noticias.get_attribute('outerHTML') 
-        soup_cards_noticia = BeautifulSoup(html_tabela_noticias, 'html.parser') 
-
-        return soup_cards_noticia
-
+        # retornando lista com dados referente ao fundo imobiliário analisado
+        # lista de dicionários, cuja qual, possui credenciais para acessar outras páginas no site da b3
+        return list_dicionarios
+   
     except:
         print("Erro! Pesquisa não pode ser solicitar.")
 
-def encontrar_card_qualificado(soup_cards_noticia, nome):
-    # econtrando o card de notícia contendo o elemento 'Aviso aos Cotistas'    
+def encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia):
+    # econtrando o 'id' e 'dateTime' da notícia contendo o elemento 'Aviso aos Cotistas'    
     try:
-        nome_lapidado = str("(" + nome + ")" + " Aviso aos Cotistas")
-        ancora = soup_cards_noticia.find_all("a")
-        lista_link = (list(filter(lambda ancora: nome_lapidado in str(ancora) , list(ancora))))
-        incremento_url_noticia = lista_link[1]['href']
+        credenciais = []
+        identificador = "Aviso aos Cotistas"
 
-        return incremento_url_noticia
+        # filtrando dicionário, cujo qual, possui o indentificador
+        lista_dic_qualificado = (list(filter(lambda dicionario: identificador in str(dicionario['NwsMsg']['headline']) , list_dicionarios_noticia)))
+        incremento_id = lista_dic_qualificado[-1]['NwsMsg']['id']
+        incremento_data_noticia = lista_dic_qualificado[-1]['NwsMsg']['dateTime']        
+
+        credenciais.append(incremento_id)
+        credenciais.append(incremento_data_noticia)
+
+        # retornando as credenciais encontradas 
+        return credenciais
 
     except:
         print("Erro! Card qualificado não encotrado")
 
-def solicitar_noticia_qualificada(incremento, browser):
+def solicitar_noticia_qualificada(credenciais_noticia, browser):
     # solicitando pele noticia na qual o elemento do card seja qualificado
     try:
         # inicinado requimento para a página de notícia encontrada
-        url_segundaria = 'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/' + incremento
-        browser.get(url_segundaria)
+        url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/Detail?idNoticia={credenciais_noticia[0]}&agencia=18&dataNoticia={credenciais_noticia[1]}'
+        browser.get(url)
                 
         # selecionado o conteúdo html da pagina de notícia encotrada
         link = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.ID, "conteudoDetalhe")))
@@ -149,30 +148,25 @@ def formata_valor_provento(soup_dados):
     # capturando da sopa html a string do 'valor do provento' e formatando-a para float
     string_valor_provento = soup_dados[5].split(',')
     valor_provento = float(string_valor_provento[0] + '.' + string_valor_provento[1])
-
     return valor_provento
 
 def formata_data_base(soup_dados):
     
     # capturando 'data base' da sopa html
     data_base = (soup_dados[3])
-
     return data_base
 
 def formata_data_pagamaneto_provento(soup_dados):
 
     # capturando 'data pagamento' da sopa html
     data_pagamento = (soup_dados[4])
-
     return data_pagamento
 
 def formata_periodo_referencia(data_base, soup_dados, nome):
 
     #formatando a 'data referencia' utilizando a 'data base' como referencia
     data_referencia = data_base.split('/')
-
     # periodo_referencia é a chave primaria do banco de dados
     periodo_referencia = f"{nome}.{data_referencia[2]}.{data_referencia[1]}"
-
     return periodo_referencia
    
