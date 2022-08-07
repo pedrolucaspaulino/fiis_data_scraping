@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
-import lxml
+
 
 def scrape_table():
     """
@@ -25,6 +25,8 @@ def scrape_table():
     browser.get(url)
     browser.implicitly_wait(10)
     browser.refresh()
+    browser.refresh()
+
 
     try:
         WebDriverWait(browser, 30).until(EC.presence_of_element_located(
@@ -32,7 +34,7 @@ def scrape_table():
     except:
         print("Table not found!")
 
-    # By default the table is set to 20 elements per page, by
+    # By default, the table is set to 20 elements per page, by
     # using this command, selenium set 120 elements per page, which
     # means that there is just 1 page to scrape
     select_element = browser.find_element(By.XPATH, '//*[@id="selectPage"]')
@@ -62,8 +64,8 @@ def scrape_table():
     with open("source/src/fiis/table_ifix.html", "w") as file:
         file.write(str(table_ifix))
 
-def list_fii():
 
+def list_fii():
     code_list_of_REIT = []
 
     with open("source/src/fiis/table_ifix.html", "r") as file:
@@ -75,10 +77,11 @@ def list_fii():
     # just one DataFrame
     df_table_ifix = pd.read_html(table_ifix)[0]
 
-    df_table_ifix = df_table_ifix.drop(columns=["Ação","Part. (%)", "Tipo", "Qtde. Teórica"])
+    df_table_ifix = df_table_ifix.drop(columns=["Ação", "Part. (%)", "Tipo", "Qtde. Teórica"])
     df_table_ifix = df_table_ifix.drop([103, 104])
 
     for index in range(0, len(df_table_ifix.values.tolist())):
-        code_list_of_REIT.append(df_table_ifix.values.tolist()[index][0][0:4])
+        if '11' in df_table_ifix.values.tolist()[index][0][0:6]:
+            code_list_of_REIT.append(df_table_ifix.values.tolist()[index][0][0:6])
 
     return code_list_of_REIT

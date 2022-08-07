@@ -1,6 +1,7 @@
 import sqlite3
 from sqlite3 import Error
 
+
 def create_connection(db_file):
     """ create a database connection to the SQLite database
         specified by db_file
@@ -29,6 +30,7 @@ def create_table(conn, create_table_sql):
     except Error as e:
         print(e)
 
+
 def create_fiis_datas(conn, dados):
     """
     Create a new project into the projects table
@@ -37,13 +39,14 @@ def create_fiis_datas(conn, dados):
     :return: project id
     """
     sql = ''' INSERT INTO fiis_datas(nome, data_base, data_pagamento, periodo_referencia)
-              VALUES(?,?,?,?) '''    
+              VALUES(?,?,?,?) '''
 
     cur = conn.cursor()
     cur.execute(sql, dados)
     conn.commit()
 
     return cur.lastrowid
+
 
 def create_fiis_valores(conn, dados):
     """
@@ -61,10 +64,9 @@ def create_fiis_valores(conn, dados):
 
     return cur.lastrowid
 
-def salvar_dados(dados_tab1, dados_tab2):
-    #database = 'projeto_cientifico/data/dados.db'
-    database = 'data/dados.db'
 
+def salvar_dados(dados_tab_datas, dados_tab_valores, database):
+    #database = 'data/dados.db'
 
     sql_create_fiis_valores = """ CREATE TABLE IF NOT EXISTS fiis_valores (
                                         periodo_referencia TEXT PRIMARY KEY, 
@@ -90,9 +92,11 @@ def salvar_dados(dados_tab1, dados_tab2):
         # create projects table
         create_table(conn, sql_create_fiis_valores)
         create_table(conn, sql_create_fiis_datas)
-        
-        if create_fiis_valores(conn, dados_tab2):        
-            create_fiis_datas(conn, dados_tab1)
+
+        if create_fiis_valores(conn, dados_tab_valores):
+            create_fiis_datas(conn, dados_tab_datas)
+        else:
+            pass
 
     else:
         print("Error! cannot create the database connection.")
