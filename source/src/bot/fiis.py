@@ -25,10 +25,11 @@ class Fii:
         self.cotacao = kwargs.get('cotacao')
         self.dividend_yield = kwargs.get('dividend_yield')
 
-    def scraping_all(self, periodo_inicial, periodo_final, ):
+    def scraping_all(self, id_noticia, date_time):
         # responsável por realizar o scraping e atribuir os devidos valores aos respectivos atributos
         with webdriver.Firefox(options=option) as browser:
-            propriedade = Fii.__propriedades_fiis(self, periodo_inicial, periodo_final, browser)
+            propriedade = Fii.__propriedades_fiis(self, id_noticia, date_time, browser)
+            print(propriedade)
 
             if propriedade is None:
                 print(f"Não foi possível extrair propriedades referente ao FII {self.nome}")
@@ -40,6 +41,7 @@ class Fii:
             Fii.__extrair_periodo_referencia(self)
             Fii.__extrair_cotacao(self, browser)
             Fii.calcular_dividend_yield(self)
+
             return True
 
     def verifica_atributos(self):
@@ -75,19 +77,18 @@ class Fii:
             print(f"{Fore.RED}Erro! Atributos não preenchidos.")
             return False
 
-    def __propriedades_fiis(self, periodo_inicial, periodo_final, browser):
+    def __propriedades_fiis(self,  id_noticia, date_time, browser):
 
         print("\n--------------------------------------------------------------------------------------")
         print(f"\n{Style.BRIGHT}Nome: {self.nome}")
 
         try:
             # incia o caminho da extração dos dados referentes aos FIIs analisados
-            list_dicionarios_noticia = Fii.__efetuar_pesquisa(self, periodo_inicial, periodo_final, browser)
-            credenciais_noticia = Fii.__encontrar_credenciais_noticia_qualificada(self, list_dicionarios_noticia)
 
-            soup_link = Fii.__solicitar_noticia_qualificada(self, credenciais_noticia, browser)
+            soup_link = Fii.__solicitar_noticia_qualificada(self, id_noticia, date_time, browser)
             url_tabela = Fii.__encontrar_id_url_tabela_propriedades_fiis(self, soup_link)
             soup_tabela = Fii.__extrair_tabela(self, '/html/body/table[2]', url_tabela, browser)
+
             # armazena os dados extraídos e logo em seguida é retornado pela função
             propriedades_fiis = list(map(lambda span: span.text,
                                          list(soup_tabela.findAll('span', class_='dado-valores'))))
@@ -98,8 +99,9 @@ class Fii:
         except():
             print(f"{Fore.RED}Erro de execução!!!")
 
-    def __efetuar_pesquisa(self, periodo_inicial, periodo_final, browser):
-        # efetuando a pesquisa pelo fii desejado
+    @staticmethod
+    def lista_credenciais(periodo_inicial, periodo_final):
+        # efetuando a pesquisa para receber as credenciais desejadas
         try:
 
             # formatando data para utilizá-la na url de pesquisa
@@ -111,64 +113,84 @@ class Fii:
                                   f"{periodo_inicial.split('/')[1]}-" \
                                   f"{periodo_inicial.split('/')[0]}"
 
-            # realizando request
-            url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/ListarTitulosNoticias?agencia=' \
-                  f'18&palavra={self.nome[0:4]}&dataInicial={data_inicial_format}&dataFinal={data_final_format}'
-            print(f"{Fore.YELLOW}-> request: {Style.RESET_ALL}{url}")
-            browser.get(url)
+            with webdriver.Firefox(options=option) as browser:
 
-            # processando e capturando dados
-            # processando json retornado pelo request realizado anteriormente
-            arquivo_json = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, "/html/body")))
-            html_arquivo_json = arquivo_json.get_attribute('outerHTML')
-            soup_json = BeautifulSoup(html_arquivo_json, 'html.parser')
-            list_dicionarios = json.loads(soup_json.text)
+                # realizando request
+                url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/ListarTitulosNoticias?agencia=' \
+                      f'18&palavra=&dataInicial={data_inicial_format}&dataFinal={data_final_format}'
 
-            # retornando lista com dados referente ao fundo imobiliário analisado
-            # lista de dicionários, que possui credenciais para acessar outras páginas no site da b3
-            return list_dicionarios
+                print(f"{Fore.YELLOW}-> request: {Style.RESET_ALL}{url}")
+                browser.get(url)
+
+                # processando e capturando dados
+                # processando json retornado pelo request realizado anteriormente
+                arquivo_json = WebDriverWait(browser, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "/html/body")))
+                html_arquivo_json = arquivo_json.get_attribute('outerHTML')
+                soup_json = BeautifulSoup(html_arquivo_json, 'html.parser')
+
+                # lista de dicionários, que possui credenciais para acessar outras páginas no site da b3
+                list_dicionarios = json.loads(soup_json.text)
+
+                # retornando lista com dados de acesso referente aos fundos imobiliários da b3
+                return Fii.encontrar_credenciais_noticia_qualificada(list_dicionarios)
 
         except:
             print(f"{Fore.RED}Erro! Pesquisa não pode ser solicitar.")
 
-    def __encontrar_credenciais_noticia_qualificada(self, list_dicionarios_noticia):
-        # responsável por encontrar o 'id' e 'dateTime' da notícia contendo o elemento 'Aviso aos Cotistas'
+    @staticmethod
+    def encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia):
+        # responsável por encontrar o 'id' e 'dateTime' referente às notícias
+        # cuja notícia possui o elemento 'Aviso aos Cotistas' em sua estrutura
+        # seguido '(N) = Norma / Notas' como referência
         try:
-            print(f"{Style.BRIGHT}-- Encontrando credenciais da noticia qualificada ({self.nome}) --")
 
-            credenciais = {"id": None, "dateTime": None}
             identificador = "Aviso aos Cotistas"
+            lista_credenciais = []
 
-            # filtrando dicionário, que possui o tal identificador
-            dic_qualificado = (list(
+            # filtrando dicionário, que possui o tais identificadores
+            dicionarios_qualificados = (list(
                 filter(lambda noticia: identificador in str(noticia['NwsMsg']['headline']) and 'N' in str(
                     noticia['NwsMsg']['headline'][-2]),
                        list_dicionarios_noticia)))
 
-            if len(dic_qualificado) == 0:
+            if len(dicionarios_qualificados) == 0:
                 print(f"{Fore.RED}Erro! Aviso as cotistas não encontrado")
                 return None
 
-            incremento_id = dic_qualificado[0]['NwsMsg']['id']
-            incremento_data_noticia = dic_qualificado[0]['NwsMsg']['dateTime']
+            # adicionando credenciais desejadas dos 'dicionarios qualificados' em uma nova lista
+            # tal lista contém variáveis responsáveis por realizar pesquisa refentes aos fundos analisados
+            for index in range(len(dicionarios_qualificados)):
 
-            credenciais.update(id=incremento_id, dateTime=incremento_data_noticia)
-            print(f"{Style.DIM}dicionário qualificado: {dic_qualificado}")
-            print(f"{Style.DIM}credenciais {self.nome}: {credenciais}")
+                # criando molde do dicionário padronizado que será retornado pela função
+                credenciais = {"nome": None, "id": None, "date_time": None}
+
+                # atribuindo valores as variáveis que serão adicionadas ao dicionário
+                id_dicionarios_qualificados = dicionarios_qualificados[index]['NwsMsg']['id']
+                datetime_dicionarios_qualificados = dicionarios_qualificados[index]['NwsMsg']['dateTime']
+                nome_dicionarios_qualificados = f"{str(dicionarios_qualificados[index]['NwsMsg']['headline']).split('(')[1][0:4]}11"
+
+                # adicionando os valores extraídos ao dicionário
+                credenciais.update(nome=nome_dicionarios_qualificados,
+                                   id=id_dicionarios_qualificados,
+                                   date_time=datetime_dicionarios_qualificados)
+
+                # adicionando dicionario a lista de dicionários que será retornado pela função
+                lista_credenciais.append(credenciais)
 
             # retornando as credenciais encontradas
-            return credenciais
+            return lista_credenciais
 
         except:
             print(f"{Fore.RED}Erro! Card qualificado não encontrado")
 
-    def __solicitar_noticia_qualificada(self, credenciais_noticia, browser):
+    def __solicitar_noticia_qualificada(self, id_noticia, date_time , browser):
         # responsável por solicitar a notícia qualificado referente ao FII analisado
         try:
             # iniciado requirimento para a página de notícia encontrada
             url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/' \
-                  f'Detail?idNoticia={credenciais_noticia.get("id")}' \
-                  f'&agencia=18&dataNoticia={credenciais_noticia.get("dateTime")}'
+                  f'Detail?idNoticia={id_noticia}' \
+                  f'&agencia=18&dataNoticia={date_time}'
             print(f"{Fore.YELLOW}-> request noticia qualificada ({self.nome}): {Style.RESET_ALL}{url}")
             browser.get(url)
 
@@ -202,8 +224,8 @@ class Fii:
 
             # definindo o dia se baseando na 'data_base'
             data = {'dia': self.data_base.split('/')[0],
-                    'mes':  self.data_base.split('/')[1],
-                    'ano':  self.data_base.split('/')[2]
+                    'mes': self.data_base.split('/')[1],
+                    'ano': self.data_base.split('/')[2]
                     }
 
             # função que retorna 'mes'/'ano' do mês anterior ao da data de execução do scraping
@@ -223,6 +245,7 @@ class Fii:
                                                url, browser)
 
             if soup_tabela is None:
+                print(f"{Fore.RED}Erro! Tabela de Cotação não encontrada.")
                 return None
 
             # percorre e armazena todas as linhas da tabela
@@ -235,9 +258,15 @@ class Fii:
                 if data.get('dia') in lista_linha[0]:
                     num_linha = linha
 
+            if num_linha is None:
+                print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
+                return None
+
             # seleciona a cotação de fechamento referente a data base
             linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
-            string_cotacao = (linha_fundo_desejado[-2]).replace(",", ".")
+            print(linha_fundo_desejado)
+
+            string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
             cotacao_formatada = float(string_cotacao)
 
             self.cotacao = float(cotacao_formatada)
@@ -262,7 +291,7 @@ class Fii:
             soup_tabela = BeautifulSoup(html_tabela, 'html.parser')
 
             if len(list(soup_tabela.find_all('table'))) == 0:
-                print(f"Table not found")
+                print(f"{Fore.RED}Table not found")
                 return None
 
             return soup_tabela
@@ -280,10 +309,9 @@ class Fii:
 
     def __extrair_valor_provento(self, dados_fiis):
         # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'
-        string_valor_provento = str(dados_fiis[5]).replace(",", ".")
+        string_valor_provento = str(dados_fiis[5]).replace(".", "").replace(",", ".")
         # formatando-a para float
         self.valor_provento = float(string_valor_provento)
-
 
     def __extrair_data_base(self, dados_fiis):
         # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'
