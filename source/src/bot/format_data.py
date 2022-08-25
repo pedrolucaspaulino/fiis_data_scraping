@@ -1,7 +1,11 @@
 from datetime import datetime
 
 
-def fun_data():
+def fun_data() -> str:
+    """
+        Com base, no mês atual da execução desta função, retorna-se o mês anterior no formato '%m/%Y'
+    """
+
     # separando a data atual em 'mês' e 'ano'
     data_atual = datetime.today().strftime('%m/%Y')
     fragmento_data = data_atual.split('/')
@@ -18,30 +22,41 @@ def fun_data():
     return data_formatada
 
 
-def data_inicial_final():
-    datas = []
+def data_inicial_final() -> dict:
+    """
+        Com base, no mês atual da execução desta função, retornam-se duas datas
+        referente ao período dos últimos 30 dias do mês anterior
+    """
+
+    datas = {"data_inicial": None,
+             "data_final": None}
+
     data = fun_data().split('/')
 
     mes = data[0]
     ano = data[1]
 
     # verificando se o ano é ano biossestos
-    if ((int(ano) - 2000)) % 4 == 0:
-        ano_biossestos = True
+    if int(ano) % 4 == 0:
+        ano_bissexto = True
     else:
-        ano_biossestos = False
+        ano_bissexto = False
 
     # formatando string 'mes'
     if int(mes) < 10:
         mes = '0' + mes
 
-    if mes == '02' and ano_biossestos == False:
+    # verificando se o ano é bissexto
+
+    if mes == '02' and ano_bissexto is False:
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '28' + '/' + mes + '/' + ano
 
-    elif mes == '02' and ano_biossestos == True:
+    elif mes == '02' and ano_bissexto is True:
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '29' + '/' + mes + '/' + ano
+
+    # define um período dos últimos 30 dias referentes ao mês anterior à execução da função
 
     elif mes == '01' or mes == '03' or mes == '05' or mes == '07' or mes == '08' or mes == '10' or mes == '12':
         data_inicial = '02' + '/' + mes + '/' + ano
@@ -51,7 +66,8 @@ def data_inicial_final():
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '30' + '/' + mes + '/' + ano
 
-    datas.append(data_inicial)
-    datas.append(data_final)
+    datas.update(data_inicial=data_inicial)
+    datas.update(data_final=data_final)
 
+    # retorna o período de 30 dias refente ao mês anterior
     return datas

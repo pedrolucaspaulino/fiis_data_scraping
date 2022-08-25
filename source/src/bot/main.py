@@ -1,15 +1,18 @@
 from format_data import data_inicial_final
 from fiis import Fii
-import colorama
 from colorama import Fore, Style
+import colorama
 
 colorama.init(autoreset=True)
 
 
-def start(credencias):
-    # instancia objeto referente ao fii analisado
-    # caso houver algum erro no processo retorna 'True' (indicando que houve algum erro no processo)
-    # caso as operações forem realizadas com sucesso a função retorna 'False' (indicando que houve sucesso)
+def start(credencias: dict) -> bool:
+
+    """
+        Instancia objeto referente ao fii analisado
+        Caso houver algum erro no processo retorna 'True' (indicando que houve algum erro no processo)
+        Caso as operações forem realizadas com sucesso a função retorna 'False' (indicando que houve sucesso)
+    """
 
     try:
         fii = Fii(credencias.get('nome'))
@@ -25,7 +28,7 @@ def start(credencias):
         return True
 
 
-def relatorio(path_file, conteudo):
+def relatorio(path_file: str, conteudo) -> None:
     with open(path_file, 'w') as file:
         for nome in conteudo:
             file.write(str(nome + "\n"))
@@ -33,7 +36,9 @@ def relatorio(path_file, conteudo):
 
 def main():
     # realizando request das credências necessárias para efetuar pesquisa
-    credenciais = Fii.lista_credenciais(data_inicial_final()[0], data_inicial_final()[1])
+    credenciais = Fii.lista_credenciais(data_inicial_final().get('data_inicial'),
+                                        data_inicial_final().get('data_final'))
+
     remanescente = list(filter(start, credenciais))
 
     if len(remanescente) > 0:

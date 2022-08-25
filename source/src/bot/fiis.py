@@ -4,9 +4,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import colorama
-from colorama import Fore, Style
 from banco_dados import salvar_dados
+from colorama import Fore, Style
+import colorama
 import json
 
 colorama.init(autoreset=True)
@@ -16,8 +16,8 @@ option.headless = True
 
 class Fii:
 
-    def __init__(self, nome, **kwargs):
-        self.nome = nome
+    def __init__(self, nome: str, **kwargs):
+        self.nome = nome  # ticker
         self.valor_provento = kwargs.get('valor_provento')
         self.data_base = kwargs.get('data_base')
         self.data_pagamento = kwargs.get('data_pagamento')
@@ -25,8 +25,13 @@ class Fii:
         self.cotacao = kwargs.get('cotacao')
         self.dividend_yield = kwargs.get('dividend_yield')
 
-    def scraping_all(self, id_noticia, date_time):
-        # responsável por realizar o scraping e atribuir os devidos valores aos respectivos atributos
+    def scraping_all(self, id_noticia: str, date_time: str) -> bool:
+        """
+            Função responsável por realizar o scraping e atribuir os devidos valores aos respectivos atributos
+        """
+
+        # iniciando processo de extrair as propriedades referentes aos FIIs
+        # propriedades = valor provento, data base e data pagamento provento
         with webdriver.Firefox(options=option) as browser:
             propriedade = Fii.__propriedades_fiis(self, id_noticia, date_time, browser)
             print(propriedade)
@@ -35,17 +40,24 @@ class Fii:
                 print(f"Não foi possível extrair propriedades referente ao FII {self.nome}")
                 return False
 
+            # iniciando processo de tratamento de dados referentes as propriedades analisadas
             Fii.__extrair_valor_provento(self, propriedade)
             Fii.__extrair_data_base(self, propriedade)
             Fii.__extrair_data_pagamento_provento(self, propriedade)
             Fii.__extrair_periodo_referencia(self)
+            # com base nas propriedades inicia-se o processo para extrair a cotação refente ao fundo analisado
             Fii.__extrair_cotacao(self, browser)
+            # função repensável por calcular dividend yield
             Fii.calcular_dividend_yield(self)
 
             return True
 
-    def verifica_atributos(self):
-        # responsável por verificar todos os atributos se todos os atributos do objeto está inicializado com algum valor
+    def verifica_atributos(self) -> bool:
+        """
+            Função responsável por verificar todos os atributos se todos os atributos do objeto está
+            inicializado com algum valor
+        """
+
         if self.valor_provento is None or self.data_base is None or self.data_pagamento is None \
                 or self.periodo_referencia is None or self.cotacao is None or self.dividend_yield is None \
                 or self.nome is None:
@@ -53,10 +65,14 @@ class Fii:
         else:
             return True
 
-    def salvar_dados_fiis(self, database):
-        # salva os dados na base de dados
-        # antes de realizar o salvamento é realizado uma verificação dos atributos referente ao fii
-        # em caso de ausência de algum atributo retorna-se 'False' (erro) e o salvamento não é realizado
+    def salvar_dados_fiis(self, database: str) -> bool:
+
+        """
+            Função responsável por salva os dados na base de dados
+            antes de realizar o salvamento é realizado uma verificação dos atributos referente ao fii
+            em caso de ausência de algum atributo retorna-se 'False' (erro) e o salvamento não é realizado
+        """
+
         if Fii.verifica_atributos(self):
             tab_valores = (self.periodo_referencia, self.cotacao, self.valor_provento, self.dividend_yield)
             tab_datas = (self.nome, self.data_base, self.data_pagamento, self.periodo_referencia)
@@ -77,7 +93,7 @@ class Fii:
             print(f"{Fore.RED}Erro! Atributos não preenchidos.")
             return False
 
-    def __propriedades_fiis(self,  id_noticia, date_time, browser):
+    def __propriedades_fiis(self, id_noticia: str, date_time: str, browser: webdriver) -> list:
 
         print("\n--------------------------------------------------------------------------------------")
         print(f"\n{Style.BRIGHT}Nome: {self.nome}")
@@ -90,8 +106,9 @@ class Fii:
             soup_tabela = Fii.__extrair_tabela(self, '/html/body/table[2]', url_tabela, browser)
 
             # armazena os dados extraídos e logo em seguida é retornado pela função
-            propriedades_fiis = list(map(lambda span: span.text,
-                                         list(soup_tabela.findAll('span', class_='dado-valores'))))
+            propriedades_fiis = list(map(lambda span: span.find('span', class_='dado-valores'),
+                                         list(soup_tabela.findAll('tr'))))
+
             print(f"{Fore.GREEN}(Propriedades FIIS ({self.nome}) extraídas)\n")
 
             return propriedades_fiis
@@ -100,8 +117,14 @@ class Fii:
             print(f"{Fore.RED}Erro de execução!!!")
 
     @staticmethod
-    def lista_credenciais(periodo_inicial, periodo_final):
-        # efetuando a pesquisa para receber as credenciais desejadas
+    def lista_credenciais(periodo_inicial: str, periodo_final: str) -> list:
+
+        """
+            Função responsável por efetuar pesquisa para receber as credenciais desejadas
+            Podendo receber um fundo específico a ser analisado ou então não recebendo nenhum fundo específico e
+            retornando todas as credenciais do periodo pesquisado
+        """
+
         try:
 
             # formatando data para utilizá-la na url de pesquisa
@@ -139,10 +162,14 @@ class Fii:
             print(f"{Fore.RED}Erro! Pesquisa não pode ser solicitar.")
 
     @staticmethod
-    def encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia):
-        # responsável por encontrar o 'id' e 'dateTime' referente às notícias
-        # cuja notícia possui o elemento 'Aviso aos Cotistas' em sua estrutura
-        # seguido '(N) = Norma / Notas' como referência
+    def encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia: dict) -> list:
+
+        """
+            Responsável por encontrar o 'id' e 'dateTime' referente às notícias
+            cuja notícia possui o elemento 'Aviso aos Cotistas' em sua estrutura
+            seguido '(N) = Norma / Notas' como referência
+        """
+
         try:
 
             identificador = "Aviso aos Cotistas"
@@ -156,12 +183,11 @@ class Fii:
 
             if len(dicionarios_qualificados) == 0:
                 print(f"{Fore.RED}Erro! Aviso as cotistas não encontrado")
-                return None
+                return []
 
             # adicionando credenciais desejadas dos 'dicionarios qualificados' em uma nova lista
             # tal lista contém variáveis responsáveis por realizar pesquisa refentes aos fundos analisados
             for index in range(len(dicionarios_qualificados)):
-
                 # criando molde do dicionário padronizado que será retornado pela função
                 credenciais = {"nome": None, "id": None, "date_time": None}
 
@@ -184,8 +210,12 @@ class Fii:
         except:
             print(f"{Fore.RED}Erro! Card qualificado não encontrado")
 
-    def __solicitar_noticia_qualificada(self, id_noticia, date_time , browser):
-        # responsável por solicitar a notícia qualificado referente ao FII analisado
+    def __solicitar_noticia_qualificada(self, id_noticia: str, date_time: str, browser: webdriver) -> BeautifulSoup:
+
+        """
+            Responsável por solicitar a notícia qualificado referente ao FII analisado
+        """
+
         try:
             # iniciado requirimento para a página de notícia encontrada
             url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/' \
@@ -204,8 +234,12 @@ class Fii:
         except:
             print(f"{Fore.RED}Erro! Ao solicitar notícia qualificada.")
 
-    def __encontrar_id_url_tabela_propriedades_fiis(self, soup_link):
-        # encontrando o 'id' tabela cuja contem os dados (propriedades) do FII analisado
+    def __encontrar_id_url_tabela_propriedades_fiis(self, soup_link: BeautifulSoup) -> str:
+
+        """
+            Encontrando o 'id' tabela cuja contem os dados (propriedades) do FII analisado
+        """
+
         try:
 
             # obtendo o 'id' de identificação da tabela
@@ -218,7 +252,13 @@ class Fii:
         except:
             print(f"{Fore.RED}Erro! id tabela não encontrado")
 
-    def __extrair_cotacao(self, browser):
+    def __extrair_cotacao(self, browser: webdriver) -> None:
+
+        """
+            Responsável por extrair cotação referente a data base do fundo analisado
+
+        """
+
         try:
             print(f"{Style.BRIGHT}-- Capturando cotacao FIIS ({self.nome}) --")
 
@@ -258,13 +298,14 @@ class Fii:
                 if data.get('dia') in lista_linha[0]:
                     num_linha = linha
 
-            if num_linha is None:
+            if num_linha is None or len(
+                    list(filter(lambda td: td.text in 'Resumo Diário', list(soup_tabela.find_all('td'))))) == 0:
                 print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
                 return None
 
             # seleciona a cotação de fechamento referente a data base
             linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
-            print(linha_fundo_desejado)
+            print(linha_fundo_desejado[-2])
 
             string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
             cotacao_formatada = float(string_cotacao)
@@ -274,14 +315,18 @@ class Fii:
         except:
             print(f"{Fore.RED}Erro! Cotacao FIIs ({self.nome}) não pode ser extraída.")
 
-    def __extrair_tabela(self, xpath, url, browser):
-        # captura a tabela desejada e retorna um 'sopa' html
+    def __extrair_tabela(self, xpath: str, url: str, browser: webdriver) -> BeautifulSoup:
+
+        """
+            Captura a tabela desejada e retorna um 'sopa' html
+        """
+
         try:
             print(f"{Style.BRIGHT}-- Extraindo tabela referente FIIs ({self.nome}) --")
 
             # utilizando a url faz o requerimento da tabela
-            browser.get(url)
             print(url)
+            browser.get(url)
 
             # a partir do 'xpath' encontra-se a tabela e logo em seguida é armazenada em uma variável
             tabela = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
@@ -292,36 +337,40 @@ class Fii:
 
             if len(list(soup_tabela.find_all('table'))) == 0:
                 print(f"{Fore.RED}Table not found")
-                return None
+                return BeautifulSoup()
 
             return soup_tabela
 
         except:
             print(f"{Fore.RED}Erro! Tabela FIIs ({self.nome}) não pode ser solicitada.")
 
-    def calcular_dividend_yield(self):
-        # responsável por calcular o 'dividend_yield'
-        # dividendo dividido pela (cotação) dia data base. Logo em seguida multiplica o resultado por 100
+    def calcular_dividend_yield(self) -> None:
+
+        """
+            Responsável por calcular o 'dividend_yield'
+            dividendo dividido pela (cotação) dia data base. Logo em seguida multiplica o resultado por 100
+        """
+
         try:
             self.dividend_yield = (self.valor_provento / self.cotacao) * 100
         except:
             print(f"{Fore.RED}Erro! Não foi possível calcular o dividend yield ({self.nome})")
 
-    def __extrair_valor_provento(self, dados_fiis):
+    def __extrair_valor_provento(self, dados_fiis: list) -> None:
         # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'
-        string_valor_provento = str(dados_fiis[5]).replace(".", "").replace(",", ".")
+        string_valor_provento = str(dados_fiis[5].get_text()).replace(".", "").replace(",", ".")
         # formatando-a para float
         self.valor_provento = float(string_valor_provento)
 
-    def __extrair_data_base(self, dados_fiis):
+    def __extrair_data_base(self, dados_fiis: list) -> None:
         # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'
-        self.data_base = (dados_fiis[3])
+        self.data_base = (dados_fiis[3].get_text())
 
-    def __extrair_data_pagamento_provento(self, dados_fiis):
+    def __extrair_data_pagamento_provento(self, dados_fiis: list) -> None:
         # capturando 'data pagamento' da sopa html
-        self.data_pagamento = (dados_fiis[4])
+        self.data_pagamento = (dados_fiis[4].get_text())
 
-    def __extrair_periodo_referencia(self):
+    def __extrair_periodo_referencia(self) -> None:
         # extraindo a 'data referencia' utilizando a 'data base' como referencia
         data_referencia = self.data_base.split('/')
         # 'periodo_referencia' é a chave primaria do banco de dados
