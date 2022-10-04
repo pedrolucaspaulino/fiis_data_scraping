@@ -1,5 +1,5 @@
 from format_data import data_inicial_final
-from fiis import Fii
+from fiis import Fiis
 from colorama import Fore, Style
 import colorama
 
@@ -15,8 +15,8 @@ def start(credencias: dict) -> bool:
     """
 
     try:
-        fii = Fii(credencias.get('nome'))
-        if fii.scraping_all(credencias.get('id'), credencias.get('date_time')):
+        fii = Fiis(credencias.get('nome'))
+        if fii.scraping_data(credencias.get('id'), credencias.get('date_time')):
 
             # salva os dados extraídos na base de dados
             # função 'salvar dados fiis' retorna 'True' em caso de sucesso e 'False' em caso de erro
@@ -36,8 +36,8 @@ def relatorio(path_file: str, conteudo) -> None:
 
 def main():
     # realizando request das credências necessárias para efetuar pesquisa
-    credenciais = Fii.lista_credenciais(data_inicial_final().get('data_inicial'),
-                                        data_inicial_final().get('data_final'))
+    credenciais = Fiis.lista_credenciais(data_inicial_final().get('data_inicial'),
+                                         data_inicial_final().get('data_final'))
 
     remanescente = list(filter(start, credenciais))
 
