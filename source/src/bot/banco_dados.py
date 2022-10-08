@@ -4,7 +4,7 @@ from sqlite3 import Error
 
 def create_connection(db_file):
     """ create a database connection to the SQLite database
-        specified by db_file
+        specified by db_file.
     :param db_file: database file
     :return: Connection object or None
     """
@@ -19,7 +19,7 @@ def create_connection(db_file):
 
 
 def create_table(conn, create_table_sql):
-    """ create a table from the create_table_sql statement
+    """ create a table from the create_table_sql statement.
     :param conn: Connection object
     :param create_table_sql: a CREATE TABLE statement
     :return:
@@ -33,9 +33,9 @@ def create_table(conn, create_table_sql):
 
 def create_fiis_datas(conn, dados):
     """
-    Create a new project into the projects table
+    Create a new project into the projects table.
     :param conn:
-    :param project:
+    :param dados:
     :return: project id
     """
     sql = ''' INSERT INTO fiis_datas(nome, data_base, data_pagamento, periodo_referencia)
@@ -50,9 +50,9 @@ def create_fiis_datas(conn, dados):
 
 def create_fiis_valores(conn, dados):
     """
-    Create a new project into the projects table
+    Create a new project into the projects table.
     :param conn:
-    :param project:
+    :param dados:
     :return: project id
     """
     sql = ''' INSERT INTO fiis_valores(periodo_referencia, cotacao_data_base, valor_provento, dividend_yield)
@@ -66,7 +66,6 @@ def create_fiis_valores(conn, dados):
 
 
 def salvar_dados(dados_tab_datas, dados_tab_valores, database):
-    #database = 'data/dados.db'
 
     sql_create_fiis_valores = """ CREATE TABLE IF NOT EXISTS fiis_valores (
                                         periodo_referencia TEXT PRIMARY KEY, 
@@ -83,13 +82,13 @@ def salvar_dados(dados_tab_datas, dados_tab_valores, database):
                                         FOREIGN KEY (periodo_referencia) REFERENCES fiis_valores (periodo_referencia)                                 
                                     ); """
 
-    # create a database connection
+    # create a database connection.
     conn = create_connection(database)
 
-    # create tables
+    # create tables.
     if conn is not None:
 
-        # create projects table
+        # create projects table.
         create_table(conn, sql_create_fiis_valores)
         create_table(conn, sql_create_fiis_datas)
 
