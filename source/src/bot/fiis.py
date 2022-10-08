@@ -56,9 +56,7 @@ class Fiis:
             return False
 
         # iniciando processo de tratamento de dados
-        Fiis.__extrair_valor_provento(self, propriedade)
-        Fiis.__extrair_data_base(self, propriedade)
-        Fiis.__extrair_data_pagamento_provento(self, propriedade)
+        Fiis.__extrair_propriedades(self, propriedade)
         Fiis.__montar_periodo_referencia(self)
 
         # com base nas propriedades inicia-se o processo para extrair a cotação refente ao fundo analisado.
@@ -108,13 +106,15 @@ class Fiis:
             tab_datas = (self.nome, self.data_base, self.data_pagamento, self.periodo_referencia)
 
             # iniciando tentativa de salvamento.
-            try:
-                salvar_dados(tab_datas, tab_valores, database)
+            status = salvar_dados(tab_datas, tab_valores, database)
+
+            # informando e retornando status da operação
+            if status:
                 print(f"{Fore.GREEN}{Style.BRIGHT}Dados salvos com sucesso!")
-                return True
-            except:
-                print(f"{Fore.RED}Erro! Falha ao salvar dados.")
-                return False
+                return status
+
+            print(f"{Fore.RED}Erro! Falha ao salvar dados.")
+            return status
 
         # caso tenha algum atributo do objeto instanciado não preenchido.
         return False
@@ -138,23 +138,21 @@ class Fiis:
 
         print("\n--------------------------------------------------------------------------------------")
         print(f"\n{Style.BRIGHT}Nome: {self.nome}")
+        # incia o processo de extração dos dados referentes aos FIIs analisados.
+        result_page_noticia = Fiis.__solicitar_noticia_qualificada(self, id_noticia, date_time)
 
-        try:
-            # incia o processo de extração dos dados referentes aos FIIs analisados.
-            soup_link = Fiis.__solicitar_noticia_qualificada(self, id_noticia, date_time)
-            url_tabela = Fiis.__encontrar_id_url_tabela_propriedades_fiis(self, soup_link)
+        if result_page_noticia.get('status'):
+            url_tabela = Fiis.__encontrar_id_url_tabela_propriedades_fiis(self, result_page_noticia.get('html'))
             soup_tabela = Fiis.__extrair_tabela(self, '/html/body/table[2]', url_tabela)
 
-            # armazena os dados extraídos e logo em seguida são retornados pela função.
-            propriedades_fiis = list(map(lambda span: span.find('span', class_='dado-valores'),
-                                         list(soup_tabela.findAll('tr'))))
+            if soup_tabela.get('status'):
+                # armazena os dados extraídos e logo em seguida são retornados pela função.
+                propriedades_fiis = list(map(lambda span: span.find('span', class_='dado-valores'),
+                                             list(soup_tabela.get('html').findAll('tr'))))
 
-            print(f"{Fore.GREEN}(Propriedades FIIS ({self.nome}) extraídas)\n")
+                print(f"{Fore.GREEN}(Propriedades FIIS ({self.nome}) extraídas)\n")
 
-            return propriedades_fiis
-
-        except():
-            print(f"{Fore.RED}Erro de execução!!!")
+                return propriedades_fiis
 
     @staticmethod
     def listar_credenciais(periodo_inicial: str, periodo_final: str) -> list:
@@ -183,20 +181,23 @@ class Fiis:
         url = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/ListarTitulosNoticias?agencia=' \
               f'18&palavra=&dataInicial={data_inicial_format}&dataFinal={data_final_format}'
 
-        try:
+        # iniciando request
+        print(f"{Fore.YELLOW}-> request: {Style.RESET_ALL}{url}")
+        page = requests.get(url)
 
-            # iniciando request
-            print(f"{Fore.YELLOW}-> request: {Style.RESET_ALL}{url}")
-            page = requests.get(url)
-
+        if page.status_code == 200:
             # processando json retornado pelo request realizado.
             list_dicionarios = page.json()
 
-            # retornando lista com dados, qualificados, de acesso referente as notícias dos fundos imobiliários da b3.
+            # retornando lista com dados, qualificados, de acesso referente as notícias dos fundos imobiliários
+            # da b3.
             return Fiis.encontrar_credenciais_noticia_qualificada(list_dicionarios)
 
-        except:
-            print(f"{Fore.RED}Erro! Pesquisa não pode ser solicitar.")
+        elif page.status_code == 404:
+            print(f"{Fore.RED}Erro! Pesquisa não encontrada.")
+
+        else:
+            print(f"{Fore.RED}Erro! Pesquisa não pode ser solicitada.")
 
     @staticmethod
     def encontrar_credenciais_noticia_qualificada(list_dicionarios_noticia: dict) -> list:
@@ -257,7 +258,7 @@ class Fiis:
         except:
             print(f"{Fore.RED}Erro! Card qualificado não encontrado")
 
-    def __solicitar_noticia_qualificada(self, id_noticia: str, date_time: str) -> BeautifulSoup:
+    def __solicitar_noticia_qualificada(self, id_noticia: str, date_time: str) -> dict:
 
         """
             Realiza o request da notícia referente ao FII analisado.
@@ -274,22 +275,8 @@ class Fiis:
               f'Detail?idNoticia={id_noticia}' \
               f'&agencia=18&dataNoticia={date_time}'
 
-        try:
-
-            # iniciando request.
-            print(f"{Fore.YELLOW}-> request noticia qualificada ({self.nome}): {Style.RESET_ALL}{url}")
-            self.__browser.get(url)
-
-            # selecionado o conteúdo html da pagina de notícia encontrada.
-            link = WebDriverWait(self.__browser, 10).until(EC.presence_of_element_located((By.ID, "conteudoDetalhe")))
-
-            html_link = link.get_attribute('outerHTML')
-            soup_link = BeautifulSoup(html_link, 'html.parser')
-
-            return soup_link
-
-        except:
-            print(f"{Fore.RED}Erro! Ao solicitar notícia qualificada.")
+        result_request = Fiis.__request_webdriver(self, url, time=10, search_type="id", element="conteudoDetalhe")
+        return result_request
 
     def __encontrar_id_url_tabela_propriedades_fiis(self, soup_link: BeautifulSoup) -> str:
 
@@ -305,17 +292,12 @@ class Fiis:
                 ao FII analisado.
         """
 
-        try:
+        # obtendo o 'id' de identificação da tabela.
+        id_tabela = (list(map(lambda ancora: str(ancora['href']).split('=')[1], list(soup_link.findAll('a'))))[0])
 
-            # obtendo o 'id' de identificação da tabela.
-            id_tabela = (list(map(lambda ancora: str(ancora['href']).split('=')[1], list(soup_link.findAll('a'))))[0])
-
-            url_tabela = 'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=' + id_tabela + '&#toolbar=0'
-            print(f"{Fore.YELLOW}-> url tabela notícia ({self.nome}): {Style.RESET_ALL}{url_tabela}")
-            return url_tabela
-
-        except:
-            print(f"{Fore.RED}Erro! id tabela não encontrado")
+        url_tabela = 'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=' + id_tabela + '&#toolbar=0'
+        print(f"{Fore.YELLOW}-> url tabela notícia ({self.nome}): {Style.RESET_ALL}{url_tabela}")
+        return url_tabela
 
     def __extrair_cotacao(self) -> None:
 
@@ -326,60 +308,57 @@ class Fiis:
                 None
         """
 
-        try:
-            print(f"{Style.BRIGHT}-- Capturando cotacao FIIS ({self.nome}) --")
+        print(f"{Style.BRIGHT}-- Capturando cotacao FIIS ({self.nome}) --")
 
-            # definindo o dia se baseando na 'data_base'.
-            data = {'dia': self.data_base.split('/')[0],
-                    'mes': self.data_base.split('/')[1],
-                    'ano': self.data_base.split('/')[2]
-                    }
+        # definindo o dia se baseando na 'data_base'.
+        data = {'dia': self.data_base.split('/')[0],
+                'mes': self.data_base.split('/')[1],
+                'ano': self.data_base.split('/')[2]
+                }
 
-            # função que retorna 'mes'/'ano' do mês anterior ao da data de execução do scraping.
-            data_pesquisa = f'{data.get("mes")}/{data.get("ano")}'
+        # função que retorna 'mes'/'ano' do mês anterior ao da data de execução do scraping.
+        data_pesquisa = f'{data.get("mes")}/{data.get("ano")}'
 
-            # url de pesquisa.
-            url = f'https://bvmf.bmfbovespa.com.br/SIG/FormConsultaMercVista.asp?strTipoResumo=RES_MERC_VISTA' \
-                  f'&strSocEmissora={self.nome}&strDtReferencia={data_pesquisa}&strIdioma=P&intCodNivel=2' \
-                  f'&intCodCtrl=160 '
+        # url de pesquisa.
+        url = f'https://bvmf.bmfbovespa.com.br/SIG/FormConsultaMercVista.asp?strTipoResumo=RES_MERC_VISTA' \
+              f'&strSocEmissora={self.nome}&strDtReferencia={data_pesquisa}&strIdioma=P&intCodNivel=2' \
+              f'&intCodCtrl=160 '
 
-            print(f"{Fore.YELLOW}-> url: {Style.RESET_ALL}{url}")
+        print(f"{Fore.YELLOW}-> url: {Style.RESET_ALL}{url}")
 
-            # realizando request e extraindo tabela para obter tabela com as cotações do FII pesquisado.
-            soup_tabela = Fiis.__extrair_tabela(self,
-                                                '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]'
-                                                '/td/table', url)
+        # realizando request e extraindo tabela para obter tabela com as cotações do FII pesquisado.
+        soup_tabela = Fiis.__extrair_tabela(self,
+                                            '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]'
+                                            '/td/table', url)
 
-            if soup_tabela is None:
-                print(f"{Fore.RED}Erro! Tabela de Cotação não encontrada.")
-                return None
+        if soup_tabela is None:
+            print(f"{Fore.RED}Erro! Tabela de Cotação não encontrada.")
+            return None
 
-            # percorre e armazena todas as linhas da tabela.
-            tag_trs = list(soup_tabela.find_all('tr'))
-            num_linha = None
+        # percorre e armazena todas as linhas da tabela.
+        tag_trs = list(soup_tabela.get('html').find_all('tr'))
+        num_linha = None
 
-            # encontra a linha com as cotações da qual é referente a data base.
-            for linha in range(tag_trs.__len__()):
-                lista_linha = tag_trs[linha].text.split('\n')
-                if data.get('dia') in lista_linha[0]:
-                    num_linha = linha
+        # encontra a linha com as cotações da qual é referente a data base.
+        for linha in range(tag_trs.__len__()):
+            lista_linha = tag_trs[linha].text.split('\n')
+            if data.get('dia') in lista_linha[0]:
+                num_linha = linha
 
-            if num_linha is None or len(
-                    list(filter(lambda td: td.text in 'Resumo Diário', list(soup_tabela.find_all('td'))))) == 0:
-                print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
-                return None
+        if num_linha is None or len(
+                list(filter(
+                    lambda td: td.text in 'Resumo Diário', list(soup_tabela.get('html').find_all('td'))))) == 0:
+            print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
+            return None
 
-            # seleciona a cotação de fechamento referente a data base.
-            linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
-            print(linha_fundo_desejado[-2])
+        # seleciona a cotação de fechamento referente a data base.
+        linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
+        print(linha_fundo_desejado[-2])
 
-            string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
-            cotacao_formatada = float(string_cotacao)
+        string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
+        cotacao_formatada = float(string_cotacao)
 
-            self.cotacao = float(cotacao_formatada)
-
-        except:
-            print(f"{Fore.RED}Erro! Cotacao FIIs ({self.nome}) não pode ser extraída.")
+        self.cotacao = float(cotacao_formatada)
 
     def __request_webdriver(self, url: str, **kwargs) -> dict:
 
@@ -408,22 +387,22 @@ class Fiis:
 
             if time is not None and search_type is not None and element is not None:
                 # selecionado o conteúdo html da pagina de notícia encontrada
-                if search_type.upper() is "ID":
+                if search_type.upper() == "ID":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.ID, element)))
-                if search_type.upper() is "XPATH":
+                if search_type.upper() == "XPATH":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.XPATH, element)))
-                if search_type.upper() is "CLASSNAME":
+                if search_type.upper() == "CLASSNAME":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.CLASS_NAME, element)))
-                if search_type.upper() is "CSSSELECTOR":
+                if search_type.upper() == "CSSSELECTOR":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.CSS_SELECTOR, element)))
-                if search_type.upper() is "NAME":
+                if search_type.upper() == "NAME":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.NAME, element)))
-                if search_type.upper() is "TAGNAME":
+                if search_type.upper() == "TAGNAME":
                     web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
                         (By.TAG_NAME, element)))
 
@@ -444,12 +423,12 @@ class Fiis:
             web_page_result.update(status=False, resume="Tempo de busca exetido.")
             self.__browser.quit()
 
-        except():
+        except:
             print(f"{Fore.RED}Erro! Não foi possível realizar o request.")
             web_page_result.update(status=False, resume="Erro insperado! Não foi possível realizar o request ")
             self.__browser.quit()
 
-    def __extrair_tabela(self, xpath: str, url: str) -> BeautifulSoup:
+    def __extrair_tabela(self, xpath: str, url: str) -> dict:
 
         """
             Extrai tabela de uma página web desejada.
@@ -465,25 +444,15 @@ class Fiis:
         print(f"{Style.BRIGHT}-- Extraindo tabela referente FIIs ({self.nome}) --")
         print(url)
 
-        try:
+        result_tabela = Fiis.__request_webdriver(self, url, time=10, search_type="xpath", element=xpath)
 
-            # iniciando request.
-            self.__browser.get(url)
-            # a partir do 'xpath' encontra-se a tabela e logo em seguida é armazenada em uma variável.
-            tabela = WebDriverWait(self.__browser, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
+        if len(list(result_tabela.get('html').find_all('table'))) == 0 and result_tabela.get('status'):
+            print(f"{Fore.RED}Table not found")
 
-            # extrai o html da tabela que logo em seguida é retornado pela função.
-            html_tabela = tabela.get_attribute('outerHTML')
-            soup_tabela = BeautifulSoup(html_tabela, 'html.parser')
+        if not result_tabela.get('status'):
+            print(f"{Fore.RED}{result_tabela.get('resume')}")
 
-            if len(list(soup_tabela.find_all('table'))) == 0:
-                print(f"{Fore.RED}Table not found")
-                return BeautifulSoup()
-
-            return soup_tabela
-
-        except:
-            print(f"{Fore.RED}Erro! Tabela FIIs ({self.nome}) não pode ser solicitada.")
+        return result_tabela
 
     def calcular_dividend_yield(self) -> None:
 
@@ -497,55 +466,11 @@ class Fiis:
         try:
             # formula para calcular 'dividend_yield'.
             self.dividend_yield = (self.valor_provento / self.cotacao) * 100
+            return
+        except ZeroDivisionError:
+            print(f"{Fore.RED}Erro! Impossível de calcular Divisor igual a '0'. Fundo analisado: ({self.nome})")
         except:
             print(f"{Fore.RED}Erro! Não foi possível calcular o dividend yield ({self.nome})")
-
-    def __extrair_valor_provento(self, dados_fiis: list) -> None:
-
-        """
-            Extrair o valor do provento presente.
-
-            Parameters:
-                dados_fiis (list): lista de dados coletados pela pesquisa contendo as propriedades do fundo analisado.
-
-            Returns:
-                None
-        """
-
-        # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'.
-        string_valor_provento = str(dados_fiis[5].get_text()).replace(".", "").replace(",", ".")
-        # formatando-a para float
-        self.valor_provento = float(string_valor_provento)
-
-    def __extrair_data_base(self, dados_fiis: list) -> None:
-
-        """
-            Extrair a data base presente.
-
-            Parameters:
-                dados_fiis (list): lista de dados coletados pela pesquisa contendo as propriedades do fundo analisado.
-
-            Returns:
-                None
-        """
-
-        # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'.
-        self.data_base = (dados_fiis[3].get_text())
-
-    def __extrair_data_pagamento_provento(self, dados_fiis: list) -> None:
-
-        """
-            Extrair a data de pagamento do provento presente.
-
-            Parameters:
-                dados_fiis (list): lista de dados coletados pela pesquisa contendo as propriedades do fundo analisado.
-
-            Returns:
-                None
-        """
-
-        # capturando 'data pagamento' da sopa html
-        self.data_pagamento = (dados_fiis[4].get_text())
 
     def __montar_periodo_referencia(self) -> None:
 
@@ -560,3 +485,26 @@ class Fiis:
         data_referencia = self.data_base.split('/')
         # 'periodo_referencia' é a chave primaria do banco de dados.
         self.periodo_referencia = f"{self.nome}.{data_referencia[2]}.{data_referencia[1]}"
+
+    def __extrair_propriedades(self, dados_fiis: list) -> None:
+
+        """
+            Extrair o valor do provento, data base e data de pagamento do fundo analisado.
+
+            Parameters:
+                dados_fiis (list): lista de dados coletados pela pesquisa contendo as propriedades do fundo analisado.
+
+            Returns:
+                None
+        """
+
+        # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'.
+        string_valor_provento = str(dados_fiis[3].get_text()).replace(".", "").replace(",", ".")
+        # formatando-a para float
+        self.valor_provento = float(string_valor_provento)
+
+        # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'.
+        self.data_base = (dados_fiis[2].get_text())
+
+        # capturando 'data pagamento' da sopa html
+        self.data_pagamento = (dados_fiis[4].get_text())
