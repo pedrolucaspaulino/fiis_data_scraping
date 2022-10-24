@@ -2,10 +2,12 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
+from format_data import data_inicial_final
+from format_data import fun_data
 from banco_dados import salvar_dados
 from colorama import Fore, Style
 import colorama
@@ -23,6 +25,8 @@ class Fiis:
     """
 
     def __init__(self, nome: str, **kwargs):
+
+        # propriedades fii
         self.nome = nome  # ticker
         self.valor_provento = kwargs.get('valor_provento')
         self.data_base = kwargs.get('data_base')
@@ -30,6 +34,7 @@ class Fiis:
         self.periodo_referencia = kwargs.get('periodo_referencia')
         self.cotacao = kwargs.get('cotacao')
         self.dividend_yield = kwargs.get('dividend_yield')
+
         # webdriver utilizado para realizar os requests.
         self.__browser = webdriver.Firefox(options=option)
 
@@ -73,7 +78,7 @@ class Fiis:
     def verifica_atributos(self) -> bool:
 
         """
-            Verifica todos os atributos do abjeto instanciado foram inicializados com algum valor.
+            Verifica se todos os atributos do abjeto instanciado foram inicializados com algum valor.
 
             Returns:
             bool: 'True' for success or 'False' for fail.
@@ -128,6 +133,7 @@ class Fiis:
             Parameters:
                 id_noticia (str): credencial de url necessária para acessar a notícia e posteriormente a tabela
                   contendo as informações do provento.
+
                 date_time (str): credencial de url necessária para acessar a notícia e posteriormente a tabela
                   contendo as informações do provento.
 
@@ -322,7 +328,7 @@ class Fiis:
         # url de pesquisa.
         url = f'https://bvmf.bmfbovespa.com.br/SIG/FormConsultaMercVista.asp?strTipoResumo=RES_MERC_VISTA' \
               f'&strSocEmissora={self.nome}&strDtReferencia={data_pesquisa}&strIdioma=P&intCodNivel=2' \
-              f'&intCodCtrl=160 '
+              f'&intCodCtrl=160'
 
         print(f"{Fore.YELLOW}-> url: {Style.RESET_ALL}{url}")
 
@@ -331,34 +337,36 @@ class Fiis:
                                             '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]'
                                             '/td/table', url)
 
-        if soup_tabela is None:
+        if not soup_tabela.get('status'):
             print(f"{Fore.RED}Erro! Tabela de Cotação não encontrada.")
             return None
 
-        # percorre e armazena todas as linhas da tabela.
-        tag_trs = list(soup_tabela.get('html').find_all('tr'))
-        num_linha = None
+        if soup_tabela.get('status'):
 
-        # encontra a linha com as cotações da qual é referente a data base.
-        for linha in range(tag_trs.__len__()):
-            lista_linha = tag_trs[linha].text.split('\n')
-            if data.get('dia') in lista_linha[0]:
-                num_linha = linha
+            # percorre e armazena todas as linhas da tabela.
+            tag_trs = list(soup_tabela.get('html').find_all('tr'))
+            num_linha = None
 
-        if num_linha is None or len(
-                list(filter(
-                    lambda td: td.text in 'Resumo Diário', list(soup_tabela.get('html').find_all('td'))))) == 0:
-            print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
-            return None
+            # encontra a linha com as cotações da qual é referente a data base.
+            for linha in range(tag_trs.__len__()):
+                lista_linha = tag_trs[linha].text.split('\n')
+                if data.get('dia') in lista_linha[0]:
+                    num_linha = linha
 
-        # seleciona a cotação de fechamento referente a data base.
-        linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
-        print(linha_fundo_desejado[-2])
+            if num_linha is None or len(
+                    list(filter(
+                        lambda td: td.text in 'Resumo Diário', list(soup_tabela.get('html').find_all('td'))))) == 0:
+                print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
+                return None
 
-        string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
-        cotacao_formatada = float(string_cotacao)
+            # seleciona a cotação de fechamento referente a data base.
+            linha_fundo_desejado = tag_trs[num_linha].text.split('\n')
+            print(linha_fundo_desejado[-2])
 
-        self.cotacao = float(cotacao_formatada)
+            string_cotacao = str((linha_fundo_desejado[-2]).replace('.', "")).replace(",", ".")
+            cotacao_formatada = float(string_cotacao)
+
+            self.cotacao = float(cotacao_formatada)
 
     def __request_webdriver(self, url: str, **kwargs) -> dict:
 
@@ -388,45 +396,48 @@ class Fiis:
             if time is not None and search_type is not None and element is not None:
                 # selecionado o conteúdo html da pagina de notícia encontrada
                 if search_type.upper() == "ID":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.ID, element)))
                 if search_type.upper() == "XPATH":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.XPATH, element)))
                 if search_type.upper() == "CLASSNAME":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.CLASS_NAME, element)))
                 if search_type.upper() == "CSSSELECTOR":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.CSS_SELECTOR, element)))
                 if search_type.upper() == "NAME":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.NAME, element)))
                 if search_type.upper() == "TAGNAME":
-                    web_page = WebDriverWait(self.__browser, time).until(EC.presence_of_element_located(
+                    web_page = WebDriverWait(self.__browser, time).until(ec.presence_of_element_located(
                         (By.TAG_NAME, element)))
 
             html_page = web_page.get_attribute('outerHTML')
             soup_page = BeautifulSoup(html_page, 'html.parser')
 
             if web_page is not None:
-                web_page_result.update(status=True, html=soup_page)
+                print(f"{Fore.GREEN}{Style.BRIGHT}Request realizado com sucesso!\n")
+                web_page_result.update(status=True, html=soup_page, resume="Tabela obtida com sucesso!")
                 return web_page_result
 
         except NoSuchElementException:
             print(f"{Fore.RED}Erro! Elemento não encontrado.")
             web_page_result.update(status=False, resume="Elemento buscado não encontrado.")
             self.__browser.quit()
+            return web_page_result
 
         except TimeoutException:
             print(f"{Fore.RED}Erro! Tempo de busca exetido.")
             web_page_result.update(status=False, resume="Tempo de busca exetido.")
             self.__browser.quit()
+            return web_page_result
 
-        except:
-            print(f"{Fore.RED}Erro! Não foi possível realizar o request.")
-            web_page_result.update(status=False, resume="Erro insperado! Não foi possível realizar o request ")
-            self.__browser.quit()
+        print(f"{Fore.RED}Erro! Não foi possível realizar o request.")
+        web_page_result.update(status=False, resume="Erro insperado! Não foi possível realizar o request.")
+        self.__browser.quit()
+        return web_page_result
 
     def __extrair_tabela(self, xpath: str, url: str) -> dict:
 
@@ -446,10 +457,8 @@ class Fiis:
 
         result_tabela = Fiis.__request_webdriver(self, url, time=10, search_type="xpath", element=xpath)
 
-        if len(list(result_tabela.get('html').find_all('table'))) == 0 and result_tabela.get('status'):
-            print(f"{Fore.RED}Table not found")
-
         if not result_tabela.get('status'):
+            print(f"{Fore.RED}Table not found")
             print(f"{Fore.RED}{result_tabela.get('resume')}")
 
         return result_tabela
@@ -469,8 +478,8 @@ class Fiis:
             return
         except ZeroDivisionError:
             print(f"{Fore.RED}Erro! Impossível de calcular Divisor igual a '0'. Fundo analisado: ({self.nome})")
-        except:
-            print(f"{Fore.RED}Erro! Não foi possível calcular o dividend yield ({self.nome})")
+
+        print(f"{Fore.RED}Erro! Não foi possível calcular o dividend yield ({self.nome})")
 
     def __montar_periodo_referencia(self) -> None:
 
@@ -508,3 +517,93 @@ class Fiis:
 
         # capturando 'data pagamento' da sopa html
         self.data_pagamento = (dados_fiis[4].get_text())
+
+    @staticmethod
+    def start_data_collector(credencias: dict) -> bool:
+
+        """
+            Instancia objeto referente ao fii analisado.
+            Chama a função de scraping atribuindo valores aos atributos do
+            objeto instanciado.
+
+             Parameters:
+                credencias.get('nome'): ticker do fundo a ser analisado
+
+                credencias.get('id'): credencial de url necessária para acessar a notícia e posteriormente a tabela
+                    contendo as informações do provento.
+
+                credencias.get('date_time'): credencial de url necessária para acessar a notícia e posteriormente a
+                tabela contendo as informações do provento.
+
+            Returns:
+                bool: 'True' for success or 'False' for fail.
+        """
+
+        path = f"data/Data_{fun_data()}.db"
+        fii = Fiis(credencias.get('nome'))
+
+        if fii.scraping_data(credencias.get('id'), credencias.get('date_time')):
+            # salva os dados extraídos na base de dados
+            # função 'salvar dados fiis' retorna 'True' em caso de sucesso e 'False' em caso de erro
+            return not fii.salvar_dados_fiis(path)
+
+        print(f"{Fore.RED}{Style.BRIGHT}Erro! Falha ao concluir o scraping.")
+        return True
+
+    @staticmethod
+    def scraping_all_b3(**kwargs) -> None:
+
+        """
+            Inicia o scraping dos dados de todos os fundos listados na B3.
+
+             Parameters:
+                kwargs.get('data_inicial'): data inicial referente ao período de pesquisa dos dados coletados.
+                kwargs.get('data_final'): data final referente ao período de pesquisa dos dados coletados.
+
+            Returns:
+                None
+        """
+
+        # por padrão se utiliza os últimos 30 dias do mês anterior como período para realizar a pesquisa.
+        # caso haja seja apresentado parâmetros referente ao período de pesquisa o período padrão é substituído.
+        if kwargs.get('data_inicial') is not None and kwargs.get('data_final') is not None:
+            data_inicial = kwargs.get('data_inicial')
+            data_final = kwargs.get('data_final')
+
+        else:
+            data_inicial = data_inicial_final().get('data_inicial')
+            data_final = data_inicial_final().get('data_final')
+
+        # realizando request das credências necessárias para efetuar pesquisa.
+        credenciais = Fiis.listar_credenciais(data_inicial, data_final)
+
+        if credenciais is not None:
+
+            # inicia a analisa de cada fundo listado na B3.
+            remanescente = list(filter(Fiis.start_data_collector, credenciais))
+
+            # gerando relatório dos fundos que não foi possível extrair os dados.
+            if len(remanescente) > 0:
+                erro = list(filter(Fiis.start_data_collector, remanescente))
+                Fiis.relatorio(f'source/relatorio_{fun_data()}.txt', erro)
+        else:
+            print(f"{Fore.RED}{Style.BRIGHT}Erro! Falha ao obter credencias para acessar as notícias referentes aos "
+                  f"fundos analisados.")
+
+    @staticmethod
+    def relatorio(path_file: str, conteudo) -> None:
+
+        """
+            Grava os nomes dos fundos não analisados em um arquivo texto.
+
+            Parameters:
+                path_file (str): caminho referente ao arquivo do relatório
+                conteudo: conteúdo a ser armazenados no relatório
+
+                Returns:
+                    None
+        """
+
+        with open(path_file, 'w') as file:
+            for nome in conteudo:
+                file.write(str(nome + "\n"))
