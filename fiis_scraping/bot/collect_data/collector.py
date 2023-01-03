@@ -4,14 +4,10 @@
     na base de dados local.
 """
 
-from fiis_scraping.formata.formata_data import data_inicial_final, fun_data
+from fiis_scraping.util.formata.formata_data import data_inicial_final, fun_data
 from fiis_scraping.bot.collect_data.credenciais import listar_credenciais_noticias
-from fiis_scraping.bot.collect_data.relatorio import relatorio
 from fiis_scraping.bot.collect_data.fiis import Fiis
-from colorama import Fore, Style
-import colorama
-
-colorama.init(autoreset=True)
+from logging import error
 
 
 def start_data_collector(credencias: dict) -> bool:
@@ -40,11 +36,11 @@ def start_data_collector(credencias: dict) -> bool:
         # função 'salvar dados fiis' retorna 'True' em caso de sucesso e 'False' em caso de erro
         return not fii.salvar_dados_fiis(path)
 
-    print(f"{Fore.RED}{Style.BRIGHT}Erro! Falha ao concluir o manipulate_data.")
+    error("Falha ao concluir o manipulate_data.")
     return True
 
 
-def collect_all_b3(**kwargs) -> None:
+def collect_all_b3(periodo_consulta) -> None:
     """
         Inicia a coleta dos dados de todos os fundos listados na B3.
 
@@ -57,15 +53,8 @@ def collect_all_b3(**kwargs) -> None:
             None
     """
 
-    # por padrão se utiliza os últimos 30 dias do mês anterior como período para realizar a pesquisa.
-    # caso haja seja apresentado parâmetros referente ao período de pesquisa o período padrão é substituído.
-    if kwargs.get('data_inicial') is not None and kwargs.get('data_final') is not None:
-        data_inicial = kwargs.get('data_inicial')
-        data_final = kwargs.get('data_final')
-
-    else:
-        data_inicial = data_inicial_final().get('data_inicial')
-        data_final = data_inicial_final().get('data_final')
+    data_inicial = data_inicial_final(periodo_consulta).get('data_inicial')
+    data_final = data_inicial_final(periodo_consulta).get('data_final')
 
     # realizando request das credências necessárias para efetuar pesquisa.
     credenciais = listar_credenciais_noticias(data_inicial, data_final)
@@ -78,7 +67,6 @@ def collect_all_b3(**kwargs) -> None:
         # gerando relatório dos fundos que não foi possível extrair os dados.
         if len(remanescente) > 0:
             erro = list(filter(start_data_collector, remanescente))
-            relatorio(f'relatorio_{fun_data().replace("/", "-")}', erro)
     else:
-        print(f"{Fore.RED}{Style.BRIGHT}Erro! Falha ao obter credencias para acessar as notícias referentes aos "
+        error("Falha ao obter credencias para acessar as notícias referentes aos "
               f"fundos analisados.")

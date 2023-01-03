@@ -1,13 +1,10 @@
 """
-    Responsável por extrair/filtrar os dados
-    obtidos pela coleta de dados.
+    Responsável por extrair os dados desejados,
+    obtidos pela coleta, realizando a extração com base em filtragens.
 """
 
 from bs4 import BeautifulSoup
-from colorama import Fore
-import colorama
-
-colorama.init(autoreset=True)
+from logging import error
 
 
 def extrair_tabela_cotacao(soup_html: BeautifulSoup, dia_data_base: str) -> float:
@@ -31,7 +28,7 @@ def extrair_tabela_cotacao(soup_html: BeautifulSoup, dia_data_base: str) -> floa
     if num_linha is None or len(
             list(filter(
                 lambda td: td.text in 'Resumo Diário', list(soup_html.find_all('td'))))) == 0:
-        print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
+        error("Cotação de fechamento referente a data base não encontrada.")
         return False
 
     # seleciona a cotação de fechamento referente a data base.
@@ -55,22 +52,33 @@ def extrair_propriedades(html_table: BeautifulSoup) -> dict:
         data de pagamento
     """
 
-    dados_fiis = list(map(lambda span: span.find('span', class_='dado-valores'),
-                          list(html_table.findAll('tr'))))
+    result = {"valor_provento": None,
+              "data_base": None,
+              "data_pagamento": None,
+              "status": None}
+    try:
+        dados_fiis = list(map(lambda span: span.find('span', class_='dado-valores'),
+                              list(html_table.findAll('tr'))))
 
-    # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'.
-    string_valor_provento = str(dados_fiis[3].get_text()).replace(".", "").replace(",", ".")
-    # formatando-a para float
-    valor_provento = float(string_valor_provento)
+        # extraindo 'valor do provento' da tabela retornada pela função 'propriedades_fiis'.
+        string_valor_provento = str(dados_fiis[3].get_text()).replace(".", "").replace(",", ".")
+        # formatando-a para float
+        valor_provento = float(string_valor_provento)
 
-    # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'.
-    data_base = (dados_fiis[2].get_text())
+        # extraindo 'data base' da tabela retornada pela função 'propriedades_fiis'.
+        data_base = (dados_fiis[2].get_text())
 
-    # capturando 'data pagamento' da sopa html
-    data_pagamento = (dados_fiis[4].get_text())
+        # capturando 'data pagamento' da sopa html
+        data_pagamento = (dados_fiis[4].get_text())
 
-    result = {"valor_provento": valor_provento,
-              "data_base": data_base,
-              "data_pagamento": data_pagamento}
+        result.update(valor_provento=valor_provento,
+                      data_base=data_base,
+                      data_pagamento=data_pagamento,
+                      status=True)
 
-    return result
+    except Exception as e:
+        error(f"Não foi possível extrair os dados da tabela de proventos.\nErro: {e}")
+        result.update(status=False)
+
+    finally:
+        return result

@@ -1,0 +1,6 @@
+valor_provento = "valor_provento"
+data_base = "data_base"
+data_pagamento = "data_pagamento"
+periodo_referencia = "periodo_referencia"
+cotacao = "cotacao"
+dividend_yield = "dividend_yield"

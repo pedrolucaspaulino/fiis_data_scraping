@@ -18,7 +18,7 @@ def fun_data() -> str:
     fragmento_data_ano = fragmento_data[1]
 
     # subtrai menos um mês para efetuar a pesquisa do mês anterior.
-    if fragmento_data_mes != 1:
+    if int(fragmento_data_mes) > 1:
         data_formatada = str((int(fragmento_data_mes) - 1)) + '/' + fragmento_data_ano
     else:
         data_formatada = '12' + '/' + str((int(fragmento_data_ano) - 1))
@@ -26,7 +26,7 @@ def fun_data() -> str:
     return data_formatada
 
 
-def data_inicial_final() -> dict:
+def data_inicial_final(peridodo_referencia) -> dict:
 
     """
         Retorna um período dos últimos 30 dias do mês anterior à execução da função.
@@ -38,10 +38,10 @@ def data_inicial_final() -> dict:
     datas = {"data_inicial": None,
              "data_final": None}
 
-    data = fun_data().split('/')
+    peridodo_referencia = peridodo_referencia.split('/')
 
-    mes = data[0]
-    ano = data[1]
+    mes = peridodo_referencia[0]
+    ano = peridodo_referencia[1]
 
     # verificando se o ano é ano biossestos.
     if int(ano) % 4 == 0:
@@ -55,11 +55,11 @@ def data_inicial_final() -> dict:
 
     # define um período dos últimos 30 dias referentes ao mês anterior à execução da função
 
-    if mes == '02' and ano_bissexto is False:
+    if mes == '02' and ano_bissexto:
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '28' + '/' + mes + '/' + ano
 
-    elif mes == '02' and ano_bissexto is True:
+    elif mes == '02' and ano_bissexto:
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '29' + '/' + mes + '/' + ano
 

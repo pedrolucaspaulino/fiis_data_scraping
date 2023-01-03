@@ -1,16 +1,10 @@
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
 from fiis_scraping.bot.collect_data.filter_data import extrair_propriedades
 from fiis_scraping.bot.collect_data.credenciais import montar_periodo_referencia
 from fiis_scraping.bot.collect_data.credenciais import id_url_tabela_propriedades_fiis
 from fiis_scraping.bot.webdriver.webdriver_request import request_webdriver
 from fiis_scraping.dao.banco_dados import salvar_dados
-from colorama import Fore, Style
-import colorama
-
-colorama.init(autoreset=True)
-option = Options()
-option.headless = True
+from fiis_scraping.util.constantes.const import *
+from logging import info, error, debug
 
 
 class Fiis:
@@ -23,15 +17,12 @@ class Fiis:
 
         # propriedades fii
         self.nome = nome  # ticker
-        self.valor_provento = kwargs.get('valor_provento')
-        self.data_base = kwargs.get('data_base')
-        self.data_pagamento = kwargs.get('data_pagamento')
-        self.periodo_referencia = kwargs.get('periodo_referencia')
-        self.cotacao = kwargs.get('cotacao')
-        self.dividend_yield = kwargs.get('dividend_yield')
-
-        # webdriver utilizado para realizar os requests.
-        self.__browser = webdriver.Firefox(options=option)
+        self.valor_provento = kwargs.get(valor_provento)
+        self.data_base = kwargs.get(data_base)
+        self.data_pagamento = kwargs.get(data_pagamento)
+        self.periodo_referencia = kwargs.get(periodo_referencia)
+        self.cotacao = kwargs.get(cotacao)
+        self.dividend_yield = kwargs.get(dividend_yield)
 
     def verifica_atributos(self) -> bool:
 
@@ -64,58 +55,40 @@ class Fiis:
                 bool: 'True' for success or 'False' for fail.
         """
 
-        status_operation = {"ticker": self.nome,
-                            "propriedades": None,
-                            "url_noticia_desejada": None,
-                            "url_tabela_propriedades": None,
-                            "provento": None,
-                            "dividend_yield": None}
+        # print("\n--------------------------------------------------------------------------------------")
+        info(f"(Iniciando extracao Propriedades FIIS ({self.nome}))")
 
         # com base nas credências obtidas no site da b3 é construída a url de busca para o fundo analisado
         url_noticia_desejada = f'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/' \
                                f'Detail?idNoticia={id_noticia}' \
                                f'&agencia=18&dataNoticia={date_time}'
 
-        status_operation.update(url_noticia_desejada=url_noticia_desejada)
-
         # realiza o request da página de notícias referente ao FII analisado.
-        result_page_noticia = request_webdriver(self.__browser,
-                                                url_noticia_desejada,
-                                                time=10,
-                                                search_type="id",
+        result_page_noticia = request_webdriver(url_noticia_desejada, time=10, search_type="id",
                                                 element="conteudoDetalhe")
 
         # iniciando processo de extração das propriedades referentes aos FIIs.
         propriedade = Fiis.__propriedades(self, result_page_noticia)
-        print(propriedade)
-        status_operation.update(propriedades=propriedade)
+        info(f"{propriedade}")
 
         if propriedade is None:
-            print(f"Não foi possível extrair propriedades referente ao FII {self.nome}")
-            print(status_operation)
+            error(f"Não foi possível extrair propriedades referente ao FII {self.nome}")
             return False
 
         # atribuindo valores aos atributos do objeto instanciado
-        self.valor_provento = propriedade.get("valor_provento")
-        self.data_base = propriedade.get("data_base")
-        self.data_pagamento = propriedade.get("data_pagamento")
+        self.valor_provento = propriedade.get(valor_provento)
+        self.data_base = propriedade.get(data_base)
+        self.data_pagamento = propriedade.get(data_pagamento)
         self.periodo_referencia = montar_periodo_referencia(self.data_base, self.nome)
 
         # com base nas propriedades inicia-se o processo para extrair a cotação refente ao fundo analisado.
         if not Fiis.__cotacao(self):
-            print(status_operation)
+            error("")
             return False
-
-        status_operation.update(provento=self.cotacao)
 
         # inicia o cálculo do dividend yield com base nos dados encontrados.
         Fiis.calcular_dividend_yield(self)
-        status_operation.update(dividend_yield=self.dividend_yield)
 
-        # encerrando execução do webdriver.
-        self.__browser.quit()
-
-        print(status_operation)
         return True
 
     def __propriedades(self, result_page_noticia) -> dict:
@@ -132,22 +105,15 @@ class Fiis:
             valor provento, data base e data pagamento do provento.
         """
 
-        print("\n--------------------------------------------------------------------------------------")
-        print(f"\n{Style.BRIGHT}Nome: {self.nome}")
-
         if result_page_noticia.get('status'):
             url_tabela = id_url_tabela_propriedades_fiis(result_page_noticia.get('html'))
-            soup_tabela = request_webdriver(self.__browser,
-                                            url_tabela,
-                                            time=10,
-                                            search_type="xpath",
-                                            element='/html/body/table[2]')
+            soup_tabela = request_webdriver(url_tabela, time=10, search_type="xpath", element='/html/body/table[2]')
 
             if soup_tabela.get('status'):
                 # armazena os dados extraídos e logo em seguida são retornados pela função.
                 propriedades_fiis = extrair_propriedades(soup_tabela.get("html"))
 
-                print(f"{Fore.GREEN}(Propriedades FIIS ({self.nome}) extraídas)\n")
+                debug(f"(Propriedades FIIS ({self.nome}) extraídas)")
 
                 return propriedades_fiis
 
@@ -160,7 +126,7 @@ class Fiis:
                 bool: 'True' for success or 'False' for fail.
         """
 
-        print(f"{Style.BRIGHT}-- Capturando cotacao FIIS ({self.nome}) --")
+        debug(f"Capturando cotacao FIIS ({self.nome})")
 
         # definindo o dia se baseando na 'data_base'.
         data = {'dia': self.data_base.split('/')[0],
@@ -176,17 +142,14 @@ class Fiis:
               f'&strSocEmissora={self.nome}&strDtReferencia={data_pesquisa}&strIdioma=P&intCodNivel=2' \
               f'&intCodCtrl=160'
 
-        print(f"{Fore.YELLOW}-> url: {Style.RESET_ALL}{url}")
+        info(f"url: {url}")
 
         # realizando request e extraindo tabela com as cotações do FII pesquisado.
         element = '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]/td/table'
-        soup_tabela = request_webdriver(self.__browser,
-                                        url, time=10,
-                                        search_type="xpath",
-                                        element=element)
+        soup_tabela = request_webdriver(url, time=10, search_type="xpath", element=element)
 
         if not soup_tabela.get('status'):
-            print(f"{Fore.RED}Erro! Tabela de Cotação não encontrada.")
+            error("Tabela de Cotação não encontrada.")
             return False
 
         if soup_tabela.get('status'):
@@ -204,7 +167,7 @@ class Fiis:
             if num_linha is None or len(
                     list(filter(
                         lambda td: td.text in 'Resumo Diário', list(soup_tabela.get('html').find_all('td'))))) == 0:
-                print(f"{Fore.RED}Erro! Cotação de fechamento referente a data base não encontrada.")
+                error("Cotação de fechamento referente a data base não encontrada.")
                 return False
 
             # seleciona a cotação de fechamento referente a data base.
@@ -231,10 +194,10 @@ class Fiis:
                 self.dividend_yield = (self.valor_provento / self.cotacao) * 100
                 return
             else:
-                print(f"{Fore.RED}Erro! Não foi possível calcular o dividend yield. Fundo analisado: ({self.nome})")
+                error(f"Não foi possível calcular o dividend yield. Fundo analisado: ({self.nome})")
 
         except ZeroDivisionError:
-            print(f"{Fore.RED}Erro! Impossível de calcular Divisor igual a '0'. Fundo analisado: ({self.nome})")
+            error(f"Impossível de calcular Divisor igual a '0'. Fundo analisado: ({self.nome})")
             return
 
     def salvar_dados_fiis(self, database: str) -> bool:
@@ -261,10 +224,10 @@ class Fiis:
 
             # informando e retornando status da operação
             if status:
-                print(f"{Fore.GREEN}{Style.BRIGHT}Dados salvos com sucesso!")
+                info("Dados salvos com sucesso!")
                 return status
 
-            print(f"{Fore.RED}Erro! Falha ao salvar dados.")
+            error("Falha ao salvar dados.")
             return status
 
         # caso tenha algum atributo do objeto instanciado não preenchido.

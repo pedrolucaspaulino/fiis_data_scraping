@@ -1,22 +1,21 @@
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
-from colorama import Fore, Style
-import colorama
+from logging import warning, debug
 
-colorama.init(autoreset=True)
+option = Options()
+option.headless = True
 
 
-def request_webdriver(browser: webdriver, url: str, time: int, search_type: str, element: str) -> dict:
+def request_webdriver(url: str, time: int, search_type: str, element: str) -> dict:
     """
         Responsável por realizar o request dos elementos desejados como parâmetro.
 
         Parameters:
-            browser: acessar a internet para possibilitar a extração de dados
-
             url (str): url de acesso à página solicitada.
 
             time (str): tempo limite de espera para o carregamento do elemento desejado presente na
@@ -32,6 +31,7 @@ def request_webdriver(browser: webdriver, url: str, time: int, search_type: str,
 
     web_page = None
     web_page_result = {"status": None, "html": None, "resume": None}
+    browser = webdriver.Firefox(options=option)
 
     try:
 
@@ -61,23 +61,21 @@ def request_webdriver(browser: webdriver, url: str, time: int, search_type: str,
         soup_page = BeautifulSoup(html_page, 'html.parser')
 
         if web_page is not None:
-            print(f"{Fore.GREEN}{Style.BRIGHT}Request realizado com sucesso!\n")
+            debug(f"Request realizado com sucesso!")
             web_page_result.update(status=True, html=soup_page, resume="Tabela obtida com sucesso!")
-            return web_page_result
 
     except NoSuchElementException:
-        print(f"{Fore.RED}Erro! Elemento não encontrado.")
+        warning("Elemento pesquisado não encontrado.")
         web_page_result.update(status=False, resume="Elemento buscado não encontrado.")
-        browser.quit()
-        return web_page_result
 
     except TimeoutException:
-        print(f"{Fore.RED}Erro! Tempo de busca exetido.")
+        warning("Tempo de busca exetido.")
         web_page_result.update(status=False, resume="Tempo de busca exetido.")
+
+    except Exception as e:
+        warning(f"Não foi possível realizar o request. {e}")
+        web_page_result.update(status=False, resume=f"Erro insperado! {e}.")
+
+    finally:
         browser.quit()
         return web_page_result
-
-    print(f"{Fore.RED}Erro! Não foi possível realizar o request.")
-    web_page_result.update(status=False, resume="Erro insperado! Não foi possível realizar o request.")
-    browser.quit()
-    return web_page_result

@@ -1,5 +1,6 @@
 import sqlite3
 from sqlite3 import Error
+from logging import error
 
 
 def create_connection(db_file):
@@ -13,7 +14,7 @@ def create_connection(db_file):
         conn = sqlite3.connect(db_file)
         return conn
     except Error as e:
-        print(e)
+        error(e)
 
     return conn
 
@@ -28,7 +29,7 @@ def create_table(conn, create_table_sql):
         c = conn.cursor()
         c.execute(create_table_sql)
     except Error as e:
-        print(e)
+        error(e)
 
 
 def create_fiis_datas(conn, dados):
@@ -66,7 +67,6 @@ def create_fiis_valores(conn, dados):
 
 
 def salvar_dados(dados_tab_datas, dados_tab_valores, database) -> bool:
-
     sql_create_fiis_valores = """ CREATE TABLE IF NOT EXISTS fiis_valores (
                                         periodo_referencia TEXT PRIMARY KEY, 
                                         cotacao_data_base REAL, 
@@ -91,13 +91,14 @@ def salvar_dados(dados_tab_datas, dados_tab_valores, database) -> bool:
         # create projects table.
         create_table(conn, sql_create_fiis_valores)
         create_table(conn, sql_create_fiis_datas)
-
-        if create_fiis_valores(conn, dados_tab_valores):
-            create_fiis_datas(conn, dados_tab_datas)
-            return True
-        else:
+        try:
+            if create_fiis_valores(conn, dados_tab_valores):
+                create_fiis_datas(conn, dados_tab_datas)
+                return True
+        except Exception as e:
+            error(f"Falha ao salvar dados\nErro: {e}")
             return False
 
     else:
-        print("Error! cannot create the database connection.")
+        error("Cannot create the database connection.")
         return False

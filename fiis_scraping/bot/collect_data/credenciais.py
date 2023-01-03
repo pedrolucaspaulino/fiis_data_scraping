@@ -1,15 +1,13 @@
 """
     Responsável por realizar
-    a buscas e extração de dados
-    referentes aos FIIs solicitados.
+    filtrar as credenciais
+    de notícias referentes
+    aos FIIs solicitados.
 """
 
 from bs4 import BeautifulSoup
-from colorama import Fore, Style
-import colorama
+from logging import info, error, critical
 import requests
-
-colorama.init(autoreset=True)
 
 
 def credenciais_noticia_qualificada(list_dicionarios_noticia: dict) -> list:
@@ -39,7 +37,7 @@ def credenciais_noticia_qualificada(list_dicionarios_noticia: dict) -> list:
                list_dicionarios_noticia)))
 
     if len(dicionarios_qualificados) == 0:
-        print(f"{Fore.RED}Erro! Aviso as cotistas não encontrado")
+        error("Aviso as cotistas não encontrado")
         return []
 
     # adicionando as credenciais selecionadas dos 'dicionarios qualificados' em uma nova lista.
@@ -100,7 +98,7 @@ def listar_credenciais_noticias(periodo_inicial: str, periodo_final: str, nome: 
               f'18&palavra=&dataInicial={data_inicial_format}&dataFinal={data_final_format}'
 
     # iniciando request
-    print(f"{Fore.YELLOW}-> request: {Style.RESET_ALL}{url}")
+    info(f"request: {url}")
     page = requests.get(url)
 
     if page.status_code == 200:
@@ -112,10 +110,10 @@ def listar_credenciais_noticias(periodo_inicial: str, periodo_final: str, nome: 
         return credenciais_noticia_qualificada(list_dicionarios)
 
     elif page.status_code == 404:
-        print(f"{Fore.RED}Erro! Pesquisa não encontrada.")
+        critical("Pesquisa, referente as credenciais, não encontrada.")
 
     else:
-        print(f"{Fore.RED}Erro! Pesquisa não pode ser solicitada.")
+        critical("Pesquisa, referente as credenciais, não pode ser solicitada.")
 
 
 def id_url_tabela_propriedades_fiis(soup_link: BeautifulSoup) -> str:
@@ -136,7 +134,7 @@ def id_url_tabela_propriedades_fiis(soup_link: BeautifulSoup) -> str:
 
     # adicionando 'id' à url para realizar a pesquisa pela tabela 'propriedades' referente ao FII analisado.
     url_tabela = 'https://fnet.bmfbovespa.com.br/fnet/publico/exibirDocumento?id=' + id_tabela + '&#toolbar=0'
-    print(f"{Fore.YELLOW}-> url tabela notícia: {Style.RESET_ALL}{url_tabela}")
+    info(f"url tabela notícia: {url_tabela}")
     return url_tabela
 
 
