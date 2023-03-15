@@ -40,9 +40,9 @@ def start_data_collector(credencias: dict) -> bool:
     return True
 
 
-def collect_all_b3(periodo_consulta) -> None:
+def collect_all_b3(periodo_consulta: str) -> None:
     """
-        Inicia a coleta dos dados de todos os fundos listados na B3.
+        Inicia a coleta dos dados de todos os fundos listados na B3, com base no período de consulta.
 
          Parameters:
             kwargs.get('data_inicial'): data inicial referente ao período de pesquisa dos dados coletados.

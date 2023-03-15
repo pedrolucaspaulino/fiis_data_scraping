@@ -2,6 +2,7 @@ from fiis_scraping.bot.collect_data.filter_data import extrair_propriedades
 from fiis_scraping.bot.collect_data.credenciais import montar_periodo_referencia
 from fiis_scraping.bot.collect_data.credenciais import id_url_tabela_propriedades_fiis
 from fiis_scraping.bot.webdriver.webdriver_request import request_webdriver
+from fiis_scraping.util.constantes.const_search_types import search_by_id, search_by_xpath
 from fiis_scraping.dao.banco_dados import salvar_dados
 from fiis_scraping.util.constantes.const import *
 from logging import info, error, debug
@@ -64,14 +65,20 @@ class Fiis:
                                f'&agencia=18&dataNoticia={date_time}'
 
         # realiza o request da página de notícias referente ao FII analisado.
-        result_page_noticia = request_webdriver(url_noticia_desejada, time=10, search_type="id",
+        result_page_noticia = request_webdriver(url_noticia_desejada,
+                                                time=10,
+                                                search_type=search_by_id,
                                                 element="conteudoDetalhe")
+
+        if not result_page_noticia.get(status_const):
+            error("Não foi possível solicitar a noticia desejada!")
+            return False
 
         # iniciando processo de extração das propriedades referentes aos FIIs.
         propriedade = Fiis.__propriedades(self, result_page_noticia)
         info(f"{propriedade}")
 
-        if propriedade is None:
+        if not propriedade.get(status_const):
             error(f"Não foi possível extrair propriedades referente ao FII {self.nome}")
             return False
 
@@ -105,11 +112,14 @@ class Fiis:
             valor provento, data base e data pagamento do provento.
         """
 
-        if result_page_noticia.get('status'):
+        if result_page_noticia.get(status_const):
             url_tabela = id_url_tabela_propriedades_fiis(result_page_noticia.get('html'))
-            soup_tabela = request_webdriver(url_tabela, time=10, search_type="xpath", element='/html/body/table[2]')
+            soup_tabela = request_webdriver(url_tabela,
+                                            time=10,
+                                            search_type=search_by_xpath,
+                                            element='/html/body/table[2]')
 
-            if soup_tabela.get('status'):
+            if soup_tabela.get(status_const):
                 # armazena os dados extraídos e logo em seguida são retornados pela função.
                 propriedades_fiis = extrair_propriedades(soup_tabela.get("html"))
 
@@ -146,13 +156,16 @@ class Fiis:
 
         # realizando request e extraindo tabela com as cotações do FII pesquisado.
         element = '/html/body/table[3]/tbody/tr/td/table/tbody/tr/td/table[1]/tbody/tr[2]/td/table'
-        soup_tabela = request_webdriver(url, time=10, search_type="xpath", element=element)
+        soup_tabela = request_webdriver(url,
+                                        time=10,
+                                        search_type=search_by_xpath,
+                                        element=element)
 
-        if not soup_tabela.get('status'):
+        if not soup_tabela.get(status_const):
             error("Tabela de Cotação não encontrada.")
             return False
 
-        if soup_tabela.get('status'):
+        if soup_tabela.get(status_const):
 
             # percorre e armazena todas as linhas da tabela.
             tag_trs = list(soup_tabela.get('html').find_all('tr'))
@@ -164,9 +177,9 @@ class Fiis:
                 if data.get('dia') in lista_linha[0]:
                     num_linha = linha
 
-            if num_linha is None or len(
-                    list(filter(
-                        lambda td: td.text in 'Resumo Diário', list(soup_tabela.get('html').find_all('td'))))) == 0:
+            if num_linha is None or len(list(
+                    filter(lambda td: td.text in 'Resumo Diário',
+                           list(soup_tabela.get('html').find_all('td'))))) == 0:
                 error("Cotação de fechamento referente a data base não encontrada.")
                 return False
 

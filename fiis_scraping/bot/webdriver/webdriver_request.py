@@ -1,6 +1,5 @@
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -9,6 +8,7 @@ from logging import warning, debug
 
 option = Options()
 option.headless = True
+geckodriver_log_path = "logs/geckodriver.log"
 
 
 def request_webdriver(url: str, time: int, search_type: str, element: str) -> dict:
@@ -21,7 +21,7 @@ def request_webdriver(url: str, time: int, search_type: str, element: str) -> di
             time (str): tempo limite de espera para o carregamento do elemento desejado presente na
              pesquisa solicitada.
 
-            search_type (str): categoria de pesquisa utilizada
+            search_type (str): categoria de elemento a ser utilizado na como referencia na pesquisna
 
             element (str): elemento desejado de busca presente na página solicitada
 
@@ -29,34 +29,13 @@ def request_webdriver(url: str, time: int, search_type: str, element: str) -> di
             soup_page (BeautifulSoup): html do elemento desejado.
     """
 
-    web_page = None
     web_page_result = {"status": None, "html": None, "resume": None}
-    browser = webdriver.Firefox(options=option)
+    browser = webdriver.Firefox(options=option, service_log_path=geckodriver_log_path)
 
     try:
 
         browser.get(url)
-
-        # selecionado o conteúdo html da pagina de notícia encontrada
-        if search_type.upper() == "ID":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.ID, element)))
-        if search_type.upper() == "XPATH":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.XPATH, element)))
-        if search_type.upper() == "CLASSNAME":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.CLASS_NAME, element)))
-        if search_type.upper() == "CSSSELECTOR":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.CSS_SELECTOR, element)))
-        if search_type.upper() == "NAME":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.NAME, element)))
-        if search_type.upper() == "TAGNAME":
-            web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located(
-                (By.TAG_NAME, element)))
-
+        web_page = WebDriverWait(browser, time).until(ec.presence_of_element_located((search_type, element)))
         html_page = web_page.get_attribute('outerHTML')
         soup_page = BeautifulSoup(html_page, 'html.parser')
 
