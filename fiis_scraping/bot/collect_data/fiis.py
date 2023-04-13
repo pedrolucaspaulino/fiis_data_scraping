@@ -90,7 +90,7 @@ class Fiis:
 
         # com base nas propriedades inicia-se o processo para extrair a cotação refente ao fundo analisado.
         if not Fiis.__cotacao(self):
-            error("")
+            error("Não foi possível extrair a cotação referente ao fundo alisado")
             return False
 
         # inicia o cálculo do dividend yield com base nos dados encontrados.

@@ -38,7 +38,7 @@ def data_inicial_final(peridodo_referencia) -> dict:
     datas = {"data_inicial": None,
              "data_final": None}
 
-    peridodo_referencia = peridodo_referencia.split('/')
+    peridodo_referencia = peridodo_referencia.split('-')
 
     mes = peridodo_referencia[0]
     ano = peridodo_referencia[1]
@@ -55,7 +55,7 @@ def data_inicial_final(peridodo_referencia) -> dict:
 
     # define um período dos últimos 30 dias referentes ao mês anterior à execução da função
 
-    if mes == '02' and ano_bissexto:
+    if mes == '02' and not ano_bissexto:
         data_inicial = '01' + '/' + mes + '/' + ano
         data_final = '28' + '/' + mes + '/' + ano
 
