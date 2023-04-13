@@ -1,6 +1,6 @@
 # fiis_data_scraping
 
-**fiis_data_scraping** é um bot, criado a partir de uma [iniciativa científica](https://pt.wikipedia.org/wiki/Inicia%C3%A7%C3%A3o_cient%C3%ADfica_j%C3%BAnior), cuja função tem de extrai dados de fundos imobiliários diretamente do site da B3 (Bolsa de Valores brasileira). 
+**fiis_data_scraping** é um bot, criado a partir de uma [iniciativa científica](https://pt.wikipedia.org/wiki/Inicia%C3%A7%C3%A3o_cient%C3%ADfica_j%C3%BAnior), no qual tem a função tem de extrai dados de fundos imobiliários diretamente do site da B3 (Bolsa de Valores brasileira). 
 
 Para obter infomações detalhadas sobre o funcionamento do porjeto acesse o [relatorio SIA](https://drive.google.com/file/d/1E3ZHYCcMQVnaateiQIzKCpCTFeISTFPk/view) e também o [vídeo de apresentação SIA](https://youtu.be/pbnMwXUm_eo) 
 
